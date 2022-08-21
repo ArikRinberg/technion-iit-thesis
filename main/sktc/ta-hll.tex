@@ -1,0 +1,32 @@
+Consider the network-wide measurement framework as illustrated in Figure~\ref{sktc-fig:ingestion-nodes} with a channel of limited bandwidth between the nodes to the centralized server and queries on the complete network stream. There can be some overlap between the traffic observed by different nodes thus the number of distinct flows in the stream is not necessarily given by the sum of the distinct flows in each of the nodes $1,\ldots,n$. 
+
+To estimate the cardinality of the complete stream a HLL can be used. Assume the HLL sketches by each node make use of arrays $M_1, \ldots M_n$  of the same size $m$, using the same set of hash functions. Following its update mechanism as detailed in \inred{Section~\ref{sktc-ssec:HyperLogLog}}, \inred{values of the} array $M$ for the complete stream can be computed simply as $M[j] = \max_{i \in [1,n]} M_i[j]$. Accordingly, the HLL array can be computed by the centralized node when each node periodically reports all its array values, allowing the centralized node to estimate the number of distinct elements in the complete stream based on $M$ as $\alpha_m  \cdot m^2 \cdot \big(\sum_{j = 0}^{m-1} {2^{-M[j]}}\big)^{-1}$. Such an approach is communication intensive. 
+
+Communication can be saved by reducing the size of the reports sent by the nodes. As $M[j]$ is set to be the maximal among the values $M_1[j], \ldots, M_n[j]$, \inred{the value} $M[j]$ can be computed correctly also when all values besides the maximum are not reported. This motivates a compression scheme in which a node reports an array value based on the probability of the value to be the maximal of the corresponding values  (over the nodes) with the same array index. \inblue{Consider a node $i$ with its $j^\text{th}$ counter value $c = M_i[j] \ge 0$. \inred{Denote $N_i$ as the number of flows observed by node $i$, and denote $N=\sum_{i=1}^n N_i$.} \forRevThree{In the following lemma we bound from below the probability of the counter $j$ in ingestion node $i$, to be the maximal among corresponding counters in all the network ingestion nodes.}}
+
+\inred{
+\begin{lemma}
+\label{sktc-lemma:min-bound-prob}
+Let the value of $M_i[j]$ be some $c \geq 0$. The probability that $c$ is the maximal among $M_1[j],\dots, M_n[j]$ is at least $(1 - \frac{1}{m} \cdot{2^{-(c-1)}})^{N-N_i}$.
+\end{lemma}
+\begin{proof}
+Let $c$ be the value of counter $M_i[j]$ for some node $i$. Consider some flow $a$ observed by some other node $k$. As the hash function is uniform, it is mapped to counter $j$ with probability $1/m$. By the uniformity of $h$, with probability $1-2^{-(c-1)}$: $\rho(h(a)) \leq c$. As there are at most $N-N_i$ flows observed by all other nodes (as there may be overlap), and as the hash function is pairwise independent, $M_i[j]$ is maximal with probability at least $(1 - \frac{1}{m} \cdot{2^{-(c-1)}})^{N-N_i}$.
+\end{proof}
+}
+
+\forRevThree{As expected, it can be concluded from the bound in Lemma \ref{sktc-lemma:min-bound-prob} that as $c$ increases, the probability that the value $c$ is the maximal value among all ingestion nodes increases as well}. Note that the values $N_1, N_2, \ldots, N_{i-1}, N_{i+1}, \ldots, N_n$ might not be known to node $i$. They can be approximated through a (relatively simple) communication process with the central server such that each node declares its estimation and the central server declares the sum of them all. Without such iteration with the central server, a node can simply report a subset that refers to its largest values. Computing the subset size should consider the number of ingestion nodes.
+
+Consider a family of compression schemes by which each node simply reports a subset of its values. Intuitively, the probability $p_c$ should serve as an input to the decision whether to report the value $c$. We now detail several  potential traffic-aware approaches that can be designed.
+%This is the probability that the counter with value $c$ is 
+
+\emph{(i)} (Random Sampling) Select a probability $p$, fixed for the $n$ nodes based on the limitation of the channel to the centralized server. Each node reports each of its counters w.p. $p$.
+
+\emph{(ii)} (Weighted Sampling) A counter value $c$ is reported w.p. $p_c$ or w.p. derived as an increasing function of $p_c$.
+
+\emph{(iii)} (Largest Values) Each node can report its  $\beta \cdot m$ largest counters, where $\beta \le 1$ is a small constant. Here, each node reports a similar amount of counters.
+
+
+\emph{(iv)} (Threshold) Each node reports all its counters with values of at least a threshold $c_T$, ignoring  small values. The same value $c_T$ applies for all nodes.  Hence, the number of values reported by  nodes varies based on the values in $M_i$ for a node $i$. 
+To compute a value $c_T$ that implies reporting some percentage $\beta$ of the total $n \cdot m$ values, the complete set of $n \cdot m$ values in the $n$ arrays are required. Reporting all such values to the centralized server increases communication costs. 
+
+The central server collects the reported values and computes $M$ based on the maximal collected value in each array index  $j \in [1,m]$. If for some index, no values were reported they can be set as 0 or as another default value.

@@ -1,0 +1,1090 @@
+
+In this section, we evaluate the error bounds of the TA-CM, TA-KMV, and TA-HLL compression methods. \inblue{For our tests, we use two traces. First, the CAIDA Anonymized Internet Trace 2018~\cite{caidaData}, which is a trace collected from the ``equinix-nyc'' monitor. We also use the MAWILab (MAWI) dataset~\cite{mawilab}, which contains items for evaluating traffic anomaly detection methods. We implement our algorithms in Python -- the source code has been open-sourced~\cite{source}.}
+
+\inred{
+As shown in Section~\ref{sktc-sec:resize}, the TA-CM sketch has closed-form mathematical guarantees. To this end, we use only the CAIDA dataset to show the error in practice; the analyzed error will hold for any stream. The TA-KMV and TA-HLL sketches have a heuristic approach. We, therefore, use both the CAIDA and the MAWI datasets to evaluate them. We divide the first $50$M packets in each trace into batches of $1$M packets, resulting in $50$ batches per trace. We extract the source-destination pair from every packet and use the pair as the stream elements. Each unique source-destination pair is a flow. Every batch of that CAIDA dataset has $\sim 15$K flows of varying sizes, while every batch of the MAWI dataset has $\sim 100$K flows. Each data-point is the average over all batches with each batch being run four times with different hash functions.
+}
+%and the distribution methods compared to existing ones. We evaluate the methods in realistic scenarios using traffic traces collected in both Equinix-Chicago and Equinix-New York monitors of CAIDA~\cite{caidaData}. We divided each trace into sub-traces each containing one million packets and used each sub-trace in the following evaluations.
+
+\inblue{The section proceeds as follows: In Section~\ref{sktc-ssc:eval:CM-STC} we analyze the \inred{average relative error} of the CM-SKTC induced by the compression\inred{, compared to the CM sketch and MM compression}. Then, in Section~\ref{sktc-ssc:eval:TA-CM:2}, we showcase how we can utilize the CM-SKTC to achieve low error while sending less data over the network for $2$ nodes, and in Section~\ref{sktc-ssc:eval:TA-CM:n} for $n$ nodes. Finally, in Section~\ref{sktc-subsec:eval:kmv} we analyze the TA-KMV, and in Section~\ref{sktc-ssc:eval:TA-HLL} we analyze the TA-HLL.}
+
+\subsection{Comparing CM-SKTC vs Maximum Merging Algorithm}
+\label{sktc-ssc:eval:CM-STC}
+First, we compare the CM-SKTC to two different \inred{compression techniques.} (1) No compression, i.e., a CM sketch with $d=4$, \inblue{as recommended in~\cite{goyal2012sketch}}. We use varying total memory usage, where each cell is $4$ bytes. (2) Maximum Merging (MM) of~\cite{yang2018elastic} with an initial $2$ MB CM sketch. The evaluation metric we used is \emph{Average Relative Error (ARE)}, defined  for a set of flows $\{f_1,...,f_n\}$ as $\frac{1}{n}\sum\limits_{i=1}^n{\frac{|\hat{f_i}-f_i|}{f_i}} =\frac{1}{n}\sum\limits_{i=1}^n{\frac{\hat{f_i}-f_i}{f_i}}$ where $\hat{f_i}$ is the estimated value of flow $f_i$. 
+
+\begin{figure}[!htb]
+\centering
+% This file was created by tikzplotlib v0.8.7.
+\begin{tikzpicture}[font=\small, scale=\myScale]
+
+\begin{axis}[
+        scale only axis,
+        xlabel={Sketch Size (KB)},
+        ylabel={Average Relative Error},
+        xmode=log,
+        log basis x=2,
+        ymode=log,
+        log basis y=10,
+        ytick={0.0001,0.001,0.01,0.1,1,10,100},
+        % log ticks with fixed point,
+        xmin=28,
+        xmax=2090,
+        ymin= 0.0001,
+        ymax = 100,
+        ymajorgrids,
+        x dir=reverse,
+        xticklabel={
+        \pgfkeys{/pgf/fpu=true}
+        \pgfmathparse{int(2^\tick)}
+        \pgfmathprintnumber[fixed]{\pgfmathresult}
+        },
+        height = 2*0.18 \columnwidth,
+        width = 2*0.35 \columnwidth,
+        legend style={at={(0.38,0.97)},anchor=north, draw=none, fill=none},
+        legend cell align={left}
+    ]
+    
+
+    \addplot[color=orange, mark=o, error bars/.cd, y dir=both, y explicit relative] coordinates {
+        (32,17.2301386655751)+=(32,0.456273716855175)-=(32,0.456273716855175)
+        (64,4.39851276684124)+=(64,0.125194135451736)-=(64,0.125194135451736)
+        (128,0.897817799438924)+=(128,0.0331188667190209)-=(128,0.0331188667190209)
+        (256,0.134055977504855)+=(256,0.0101784884960035)-=(256,0.0101784884960035)
+        (512,0.0137905579843333)+=(512,0.00258244268887848)-=(512,0.00258244268887848)
+        (1024,0.00120311464471896)+=(1024,0.000617359130580432)-=(1024,0.000617359130580432)
+        (2048,0.000149737707752551)+=(2048,0.000271013920590392)-=(2048,0.000271013920590392)
+    };
+    \addlegendentry{CM, variable size (no compression)}
+    
+    \addplot [color=blue, domain=28:2090, dashed] {0.000149737707752551};
+    \addlegendentry{2MB CM (no compression)}
+    \addplot[color=cyan, mark=star, error bars/.cd, y dir=both, y explicit relative] coordinates {
+        (32,8.50763586140085)+=(32,0.260338789864091)-=(32,0.260338789864091)
+        (64,2.41233720425902)+=(64,0.0811565432460121)-=(64,0.0811565432460121)
+        (128,0.524980932282619)+=(128,0.0282927869416904)-=(128,0.0282927869416904)
+        (256,0.0883494285351726)+=(256,0.00848242056753894)-=(256,0.00848242056753894)
+        (512,0.0142551949578031)+=(512,0.00276276859634349)-=(512,0.00276276859634349)
+        (1024,0.00267072482933362)+=(1024,0.00102240698590769)-=(1024,0.00102240698590769)
+        (2048,0.000149737707752551)+=(2048,0.000271013920590392)-=(2048,0.000271013920590392)
+    };
+    \addlegendentry{CM-SKTC}
+
+    \addplot[color=green, mark=+, error bars/.cd, y dir=both, y explicit relative] coordinates {
+        (32,8.39710896896061)+=(32,0.265442012913497)-=(32,0.265442012913497)
+        (64,2.32340612291331)+=(64,0.0785598660178268)-=(64,0.0785598660178268)
+        (128,0.473333620715826)+=(128,0.023338511940957)-=(128,0.023338511940957)
+        (256,0.0688385614051386)+=(256,0.00833248009924655)-=(256,0.00833248009924655)
+        (512,0.00708697096724866)+=(512,0.00213546569353468)-=(512,0.00213546569353468)
+        (1024,0.000751364202893397)+=(1024,0.000553457068376218)-=(1024,0.000553457068376218)
+        (2048,0.000149737707752551)+=(2048,0.000271013920590392)-=(2048,0.000271013920590392)
+    };
+    \addlegendentry{MM~\cite{yang2018elastic}}
+    
+    
+\end{axis}
+\begin{axis}[
+  scale only axis,
+  xlabel={Compression Ratio},
+    x label style={at={(axis description cs:0.5,1.29)},anchor=north},
+  xmin=28/2048,xmax=2090/2048,
+  xmode=log,
+  log basis x=2,
+  ymin= 0.001,
+  ymax = 100,
+  axis y line=none,
+  axis x line*=top,
+  %xticklabels={$1$, $1$, $1/2$, $1/4$, $1/8$, $1/16$, $1/32$, $1/64$},
+  height = 2*0.18 \columnwidth,
+  width = 2*0.35 \columnwidth,]
+\end{axis}
+\end{tikzpicture}
+\caption{Single node: Compression methods comparison}\label{sktc-fig:general-method-comparison}
+\end{figure}
+
+Figure \ref{sktc-fig:general-method-comparison} compares the different compression methods for different sketch sizes. The blue-dashed baseline represents the \textit{ARE} of the 2 MB CM sketch that both compression methods initiate from. One can observe that CM-SKTC outperforms the two other methods consistently. Furthermore, as the compression ratio decreases and the summary size increases, the \textit{ARE} improves, as expected.
+
+\begin{figure}[!htb]
+\centering
+% This file was created by tikzplotlib v0.8.7.
+\begin{tikzpicture}[font=\small, scale=\myScale]
+
+\begin{axis}[
+        scale only axis,
+        xlabel={Sketch Size (KB)},
+        ylabel={Average Relative Error},
+        xmode=log,
+        log basis x=2,
+        ymode=log,
+        log basis y=10,
+        xmin=28,
+        xmax=2090,
+        ymin= 10e-8,
+        ymax = 10e-3,
+        ymajorgrids,
+        axis y line=none,
+        log ticks with fixed point,
+        x dir=reverse,
+        xticklabel={
+        \pgfkeys{/pgf/fpu=true}
+        \pgfmathparse{int(2^\tick)}
+        \pgfmathprintnumber[fixed]{\pgfmathresult}
+        },
+        height = 2*0.18 \columnwidth,
+        width = 2*0.35 \columnwidth,
+        legend style={at={(0.38,0.95)},anchor=north, draw=none, fill=none},
+        legend cell align={left}
+    ]
+    
+    %Change this line to single line without points (Also Figure 5), extend to 2048
+    
+    \addplot[color=orange, mark=o, error bars/.cd, y dir=both, y explicit relative] coordinates {
+(32,0.00795579363029106)+=(32,0.00162895737328799)-=(32,0.00162895737328799)
+(64,0.00210953168746669)+=(64,0.000599802582637658)-=(64,0.000599802582637658)
+(128,0.000411176282548868)+=(128,0.000137097717563645)-=(128,0.000137097717563645)
+(256,6.17486343494554E-05)+=(256,5.21386879346016E-05)-=(256,5.21386879346016E-05)
+(512,5.45813819295529E-06)+=(512,1.28323308856708E-05)-=(512,1.28323308856708E-05)
+(1024,2.11168238388759E-07)+=(1024,9.04130906579136E-07)-=(1024,9.04130906579136E-07)
+(2048,0.000000146090104)+=(2048,5.91256371062124E-07)-=(2048,5.91256371062124E-07)
+    };
+    \addlegendentry{CM, variable size (no compression)}
+    
+    \addplot[color=blue, dashed, mark=triangle ,mark options={solid}] coordinates {
+        (32,0.000000146090104) += (32,0.000271013920590392) -= (32,0.000271013920590392)
+        (64,0.000000146090104) += (64,0.000271013920590392) -= (64,0.000271013920590392)
+        (128,0.000000146090104) += (128,0.000271013920590392) -= (128,0.000271013920590392)
+        (256,0.000000146090104) += (256,0.000271013920590392) -= (256,0.000271013920590392)
+        (512,0.000000146090104) += (512,0.000271013920590392) -= (512,0.000271013920590392)
+        (1024,0.000000146090104) += (1024,0.000271013920590392) -= (1024,0.000271013920590392)
+        (2048,0.000000146090104) += (2048,0.000271013920590392) -= (2048,0.000271013920590392)
+    };
+    \addlegendentry{2MB CM (no compression)}
+    
+    \addplot[color=cyan, mark=star, error bars/.cd, y dir=both, y explicit relative] coordinates {
+        (32,0.000000146090104) += (32,0.000271013920590392) -= (32,0.000271013920590392)
+        (64,0.000000146090104) += (64,0.000271013920590392) -= (64,0.000271013920590392)
+        (128,0.000000146090104) += (128,0.000271013920590392) -= (128,0.000271013920590392)
+        (256,0.000000146090104) += (256,0.000271013920590392) -= (256,0.000271013920590392)
+        (512,0.000000146090104) += (512,0.000271013920590392) -= (512,0.000271013920590392)
+        (1024,0.000000146090104) += (1024,0.000271013920590392) -= (1024,0.000271013920590392)
+        (2048,0.000000146090104) += (2048,0.000271013920590392) -= (2048,0.000271013920590392)
+    };
+    \addlegendentry{CM-SKTC}
+
+    \addplot[color=green, mark=+, error bars/.cd, y dir=both, y explicit relative] coordinates {
+        (32,0.000000146090104) += (32,0.000271013920590392) -= (32,0.000271013920590392)
+        (64,0.000000146090104) += (64,0.000271013920590392) -= (64,0.000271013920590392)
+        (128,0.000000146090104) += (128,0.000271013920590392) -= (128,0.000271013920590392)
+        (256,0.000000146090104) += (256,0.000271013920590392) -= (256,0.000271013920590392)
+        (512,0.000000146090104) += (512,0.000271013920590392) -= (512,0.000271013920590392)
+        (1024,0.000000146090104) += (1024,0.000271013920590392) -= (1024,0.000271013920590392)
+        (2048,0.000000146090104) += (2048,0.000271013920590392) -= (2048,0.000271013920590392)
+    };
+    \addlegendentry{MM}
+    
+    
+\end{axis}
+\begin{axis}[
+  scale only axis,
+  xlabel={Compression Ratio},
+  ylabel={Average Relative Error},
+  x label style={at={(axis description cs:0.5,1.3)},anchor=north},
+  xmin=28/2048,xmax=1111/2048,
+  xmode=log,
+  log basis x=2,
+  ymode=log,
+ymin= 10e-9,
+ymax = 10e-5,
+ymajorgrids,
+  axis x line*=top,  
+  xticklabels={$1$, $1$, $1/2$, $1/4$, $1/8$, $1/16$, $1/32$, $1/64$},
+  ytick={0.0001,0.00001, 0.000001, 0.0000001, 0.00000001},
+  height = 2*0.18 \columnwidth,
+  width = 2*0.35 \columnwidth,]
+\end{axis}
+\end{tikzpicture}
+
+\caption{Single node: Compression methods comparison - top 50 flows. The 2MB-CM, CM-SKTC, and MM lines coalesce.}\label{sktc-fig:top50-method-comparison}
+\end{figure}
+
+In Figure \ref{sktc-fig:top50-method-comparison} we depict the same comparison as Figure \ref{sktc-fig:general-method-comparison}; however we choose a larger sample size of flows, and only to the 50 largest flows \textit{ARE} in each trace are considered. In this graph, one can observe that the top flows \textit{ARE} is extremely low for all methods. Moreover, the MM and CM-SKTC curves are similar, and both have the same error as the 2MB sketch.
+
+
+%In Table \ref{sktc-table:evaluation:running_times} we compare the time of both the compression process and the query of the MM and CM-SKTC compression.
+\inblue{Note that,} the MM is more time-efficient than the CM-SKTC compression. This is due to each hash being calculated twice (for the insertion and for the compression), and therefore we expect the CM-SKTC to be roughly twice as slow as the MM. \inred{Table~\ref{sktc-table:evaluation:data-sent} shows that our compression scheme has a lower packet overhead than MM. While MM may be faster, we can reduce the bandwidth used by the sketch significantly.}
+
+From Figures \ref{sktc-fig:general-method-comparison} and \ref{sktc-fig:top50-method-comparison}, we deduce that the CM-SKTC has two important traits: (1) CM-SKTC achieves estimations within the required error parameters using smaller summaries, and (2) For large (elephant) flows this error is negligible.
+
+\subsection{TA-CM with two ingestion nodes ($n=2$)}
+\label{sktc-ssc:eval:TA-CM:2}
+We now simulate two local nodes receiving a data stream of size $N$, where the relation between the size of the data stream $N_1$ processed at the first node, and the size of the data stream $N_2$ at the second node is $k=\frac{N_1}{N_2}$. We evaluate the effect of $k$ on the \textit{ARE}. 
+
+Figure \ref{sktc-fig:two-servers-distribution} depicts the \textit{ARE} of merging two sketches when sending different sizes over the network. We compare locally building two sketches with error $\epsilon$, such that they each have size $1$MB (meaning $2$MB of data is sent over the network), and building larger local sketches with error $\sigma \epsilon$ and compressing them. We compare the trivial compression by factor $1 / \sigma$ compared to using our optimal resize factors, for $\sqrt{k}=3,7,10$. Note that our comparison shows that the error of resizing using optimal factors falls in between the error of starting with error $\epsilon$ and trivially compressing with error $\sigma \epsilon$. Of great importance is that even in the worst case the error is less than $\epsilon$. Table \ref{sktc-table:evaluation:data-sent} compares the summaries size across the network. It follows that there is a trade-off between the accuracy and the summaries size.
+Figure \ref{sktc-fig:data-sent-ratio} shows the ratio between summaries size as a function of $k$, in relation to trivial compression.
+
+\begin{figure}[!t]
+\centering
+% This file was created by tikzplotlib v0.8.7.
+\begin{tikzpicture}[font=\small, scale=\myScale]
+
+\begin{axis}[
+        xlabel={CM Size (MB) in Each Ingestion Node},
+        ylabel={Average Relative Error},
+        xmode=log,
+        log basis x=2,
+        ymode=log,
+        log basis y=2,
+        log ticks with fixed point,
+        xmin=1.9,
+        xmax=35,
+        ymin= 0,
+        ymax = 0.005,
+        ymajorgrids,
+        height = 2*0.25 \columnwidth,
+        width = 2*0.45 \columnwidth,
+        legend style={at={(0.55,1.29)},anchor=north},
+        legend columns = 2
+        legend width = 2*0.35
+        % mark repeat=5,
+    ]
+    
+    \addplot [color=blue, domain=1:35, dashed] {0.002931419};
+    \addlegendentry{Two 1MB CM}
+
+    \addplot[color=orange, mark=o, error bars/.cd, y dir=both, y explicit relative] coordinates {
+        (2,0.00296915803480048)+=(2,0.000347110578138022)-=(2,0.000347110578138022)
+        (4,0.002256303092097967)+=(4,0.000358129292794643)-=(4,0.000358129292794643)
+        (8,0.001971592412154686)+=(8,0.000367505249328563)-=(8,0.000367505249328563)
+        (16,0.0017443431490592135)+=(16,0.000369607765498873)-=(16,0.000369607765498873)
+        (32,0.001520224889699387)+=(32,0.000448184951568447)-=(32,0.000448184951568447)
+    };
+    \addlegendentry{MM}
+    
+    \addplot[color=cyan, mark=star, error bars/.cd, y dir=both, y explicit relative] coordinates {
+        (2,0.0034529583824306)+=(2,0.000859556663510899)-=(2,0.000859556663510899)
+        (4,0.00227091006184114)+=(4,0.00108749299593454)-=(4,0.00108749299593454)
+        (8,0.00154598340803716)+=(8,0.000473362436844997)-=(8,0.000473362436844997)
+        (16,0.00148559916036538)+=(16,0.000431282460768933)-=(16,0.000431282460768933)
+        (32,0.00128208372348584)+=(32,0.0003850265319484)-=(32,0.0003850265319484)
+    };
+    \addlegendentry{TA-CM $k=9$}
+    
+    \addplot[color=green, mark=+, error bars/.cd, y dir=both, y explicit relative] coordinates {
+        (2,0.00404911795243449)+=(2,0.000949957428845652)-=(2,0.000949957428845652)
+        (4,0.00258340366490199)+=(4,0.000740916941009595)-=(4,0.000740916941009595)
+        (8,0.00244495913594148)+=(8,0.00056656960414439)-=(8,0.00056656960414439)
+        (16,0.00246352697587617)+=(16,0.000733011180075582)-=(16,0.000733011180075582)
+        (32,0.00227907488232002)+=(32,0.000563417808543281)-=(32,0.000563417808543281)
+    };
+    \addlegendentry{TA-CM $k=49$}
+    
+    \addplot[color=red, mark=diamond, error bars/.cd, y dir=both, y explicit relative] coordinates {
+(2,0.00400958809069177)+=(2,0.000782754740222883)-=(2,0.000782754740222883)
+(4,0.00290372943567313)+=(4,0.000722232777089102)-=(4,0.000722232777089102)
+(8,0.00246138051393235)+=(8,0.000502715484257819)-=(8,0.000502715484257819)
+(16,0.00231092449094757)+=(16,0.000808776961871573)-=(16,0.000808776961871573)
+(32,0.00223232953999738)+=(32,0.000394832438639461)-=(32,0.000394832438639461)
+    };
+    \addlegendentry{TA-CM $k=100$}
+    
+\end{axis}
+\end{tikzpicture}
+
+\caption{Two nodes: Compression methods comparison}\label{sktc-fig:two-servers-distribution}
+
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+% This file was created by tikzplotlib v0.8.7.
+\begin{tikzpicture}[font=\small, scale=\myScale]
+
+\begin{axis}[
+        scale only axis,
+        xlabel={Traffic Ratio between Ingestion Nodes},
+        ylabel={Size Ratio},
+        log ticks with fixed point,
+        xmin=1,
+        xmax=100,
+        ymin= 0.5,
+        ymax = 1.03,
+        ymajorgrids,
+        height = 0.24 \columnwidth,
+        width = 2*0.35 \columnwidth,
+        legend style={at={(0.8,0.6)},anchor=north, draw=none},
+        extra x ticks ={1},
+        extra y ticks ={0.5},
+    ]
+    
+    \addplot+[blue, mark=none,domain=1:100] {(x^(1/2)+1)^2)/(2*(x+1)};
+\end{axis}
+\end{tikzpicture}
+\caption{Ratio between summaries size in multiple compression methods 
+}\label{sktc-fig:data-sent-ratio}
+\end{figure}
+
+\begin{table}[!t]
+\caption{Compression Ratio by $k$ \label{sktc-table:evaluation:data-sent}}
+    \centering
+	\begin{tabular}{|c|c|}
+	    \hline
+		 \textbf{\shortstack{Compression \\ Method}}  & \textbf{\shortstack{Summaries Size Sent \\ (\% from max)}} \\ 
+		\hline
+		Maximum Merging & 2 MB (100\%)  \\ 
+		\hline
+		TA-CM, $k=1$ & 2 MB (100\%)  \\ 
+		\hline
+		TA-CM, $k=9$ & 1.6 MB (80\%)  \\ 
+		\hline
+		TA-CM, $k=49$ & 1.28 MB (64.3\%)  \\ 
+		\hline
+		TA-CM, $k=100$ & 1.18 MB (59\%)  \\ 
+		\hline
+	\end{tabular}
+	 
+%	\vspace{-6mm}
+\end{table}
+
+In Figure \ref{sktc-fig:two-servers-distribution-2MB} we show the results of compressing the same base CM sketch as in Figure \ref{sktc-fig:two-servers-distribution}. However, in this simulation, we compare the results when the total summaries size is $2$MB, i.e., the summaries account for $2$MB of network traffic. In this case, we observe that the TA-CM \textit{ARE} is better than the MM \textit{ARE}. TA-CM outperforms MM as it is traffic-aware and considers the distribution across the nodes and calculates the ratios accordingly; it helps to send the larger part of the data from the node that handled the larger chunk of the stream.
+
+\begin{figure}[!t]
+\centering
+% This file was created by tikzplotlib v0.8.7.
+\begin{tikzpicture}[font=\small, scale=\myScale]
+
+\begin{axis}[
+        xlabel={CM size (MB) in each ingestion node},
+        ylabel={Average Relative Error},
+        xmode=log,
+        log basis x=2,
+        ymode=log,
+        log basis y=2,
+        log ticks with fixed point,
+        xmin=1.9,
+        xmax=35,
+        ymin= 0,
+        ymax = 0.28,
+        ymajorgrids,
+        height = 2*0.25 \columnwidth,
+        width = 2*0.45 \columnwidth,
+        legend style={at={(0.58,1.20)},anchor=north},
+        legend columns = 2
+        legend width = 2*0.35 \columnwidth,
+        % mark repeat=5,
+    ]
+    
+    \addplot[color=orange, mark=o] coordinates {
+        (2,0.179743449)
+        (4,0.130527461)
+        (8,0.108661266)
+        (16,0.098897622)
+        (32,0.093743353)
+    };
+    \addlegendentry{MM}
+    
+    \addplot[color=cyan, mark=star] coordinates {
+        (2,0.230504062225623)
+        (4,0.13258234871128)
+        (8,0.108942408575435)
+        (16,0.0920066621666375)
+        (32,0.0867979682007765)
+    };
+    \addlegendentry{TA-CM $k=9$}
+    
+    \addplot[color=green, mark=+] coordinates {
+        (2,0.210633144817792)
+        (4,0.0940809172884923)
+        (8,0.0586891464861655)
+        (16,0.0452908789372009)
+        (32,0.0413224013064837)
+    };
+    \addlegendentry{TA-CM $k=49$}
+    
+    \addplot[color=red, mark=diamond] coordinates {
+        (2,0.191880649575314)
+        (4,0.0802466257250163)
+        (8,0.0455919938550279)
+        (16,0.0334732122784799)
+        (32,0.0283161105139431)
+    };
+    \addlegendentry{TA-CM $k=100$}
+    
+\end{axis}
+\end{tikzpicture}
+
+\caption{Two nodes: Compression methods comparison. Allowance of $2$MB sent from ingestion nodes to centralized server.} \label{sktc-fig:two-servers-distribution-2MB}
+
+\end{figure}
+
+\subsection{TA-CM with $n$ ingestion nodes}
+\label{sktc-ssc:eval:TA-CM:n}
+\begin{figure}[!htb]
+\centering
+
+\begin{tikzpicture}[font=\small, scale=\myScale]
+
+\begin{axis}[
+        scale only axis,
+        xlabel={Node Index},
+        ylabel={Stream Size Ratio},
+        xmin=0.8,
+        xmax=10.2,
+        ymin= 0.028,
+        ymax = 0.21,
+        ymajorgrids,
+        yticklabel=\pgfkeys{/pgf/number format/.cd,fixed,precision=2,zerofill}\pgfmathprintnumber{\tick},
+        height = 2*0.18 \columnwidth,
+        width = 2*0.35 \columnwidth,
+        legend style={at={(0.79,0.99)},anchor=north},
+        legend cell align={left}
+    ]
+    %add ticks all x
+    \addplot[color=blue, mark=triangle] coordinates {
+        (1,0.166666667)
+        (2,0.151851852)
+        (3,0.137037037)
+        (4,0.122222222)
+        (5,0.107407407)
+        (6,0.092592593)
+        (7,0.077777778)
+        (8,0.062962963)
+        (9,0.048148148)
+        (10,0.033333333)
+    };
+    \addlegendentry{Linear}
+
+    \addplot[color=orange, mark=o] coordinates {
+        (1,0.196636457)
+        (2,0.16443744)
+        (3,0.137510979)
+        (4,0.114993698)
+        (5,0.096163598)
+        (6,0.080416908)
+        (7,0.067248722)
+        (8,0.056236813)
+        (9,0.047028093)
+        (10,0.039327291)
+    };
+    \addlegendentry{Exponential}
+    
+    \addplot[color=cyan, mark=star] coordinates {
+        (1,0.16692565)
+        (2,0.1589913)
+        (3,0.14783371)
+        (4,0.13215652)
+        (5,0.11151949)
+        (6,0.0884805)
+        (7,0.06784347)
+        (8,0.05216628)
+        (9,0.04100869)
+        (10,0.033074344)
+    };
+    \addlegendentry{Arctan}
+    
+    \addplot[color=green, mark=+] coordinates {
+        (1,0.1)
+        (2,0.1)
+        (3,0.1)
+        (4,0.1)
+        (5,0.1)
+        (6,0.1)
+        (7,0.1)
+        (8,0.1)
+        (9,0.1)
+        (10,0.1)
+    };
+    \addlegendentry{Const}
+    
+\end{axis}
+\end{tikzpicture}
+\caption{$n=10$ nodes: Stream size distribution over the nodes}\label{sktc-fig:10-servers-distribution}
+\end{figure}
+
+To evaluate TA-CM in multiple-ingestion nodes scenarios, we formulate four different types of distributions for 10 nodes (see Figure \ref{sktc-fig:10-servers-distribution}) and compare the TA-CM to MM and the non-compressed CM sketch. The distributions were chosen such that the ratio between the largest server ratio to the smallest server ratio is 5 (i.e., $N_1 / N_{10} = 5$).
+
+The  CM sketch base size for each of the $10$ nodes is $32$KB. We compare the \textit{ARE} with multiple values of $\sigma$ (i.e., the ratio by which the ingestion node CM sizes is increased) and compressing with two methods: (1) TA-CM with ratios computed in Section \ref{sktc-sec:resize} (2) MM compression with all ratios are $1/\sigma$. As depicted in Figure~\ref{sktc-fig:10-servers-distribution-compression}, TA-CM achieves similar results in terms of \textit{ARE} to the Maximum Merging compression and improves the results of the basic non-compressed CM. However, it does so while decreasing the total summaries size.  Table \ref{sktc-table:evaluation:cr-distributions} indicates that the TA-CM saves between 7\% to 9\% of the total summaries size for chosen distributions. This saving ratio can be increased by choosing other, wider distributions of the stream (for example if the stream distributes across the ingestion nodes by Pareto distribution then TA-CM potentially saves an even higher percentage).
+
+\begin{table}[!htb]
+	\caption{Compression ratio of various distributions}
+
+    \centering
+	\begin{tabular}{|c|c|}
+	    \hline
+		\textbf{Distribution}  & \textbf{\shortstack{Summaries Size \\ (\% from max)}} \\ 
+		\hline
+		Maximum Merging & 320KB (100\%)  \\ 
+		\hline
+		Constant Dist. & 320KB (100\%)  \\ 
+		\hline
+		Exponential Dist. & $\sim$ 292KB (91.3\%)  \\ 
+		\hline
+		Linear Dist. & $\sim$ 298KB (93.3\%)  \\ 
+		\hline
+		Arctan Dist. & $\sim$ 293KB (91.6\%)  \\ 
+		\hline
+	\end{tabular}
+	\label{sktc-table:evaluation:cr-distributions}
+%	\vspace{-6mm}
+\end{table}
+
+\begin{figure}[!htb]
+\centering
+
+% This file was created by tikzplotlib v0.8.7.
+\begin{tikzpicture}[font=\small, scale=\myScale]
+
+\begin{axis}[
+        scale only axis,
+        xlabel={CM size (KB) in each ingestion node},
+        ylabel={Average Relative Error},
+        xmode=log,
+        log basis x=2,
+        ymode=log,
+        log basis y=2,
+        xmin=60,
+        xmax=1060,
+        log ticks with fixed point,
+        height = 2*0.18 \columnwidth,
+        width = 2*0.35 \columnwidth,
+        yticklabels={$2^{-13}$,$2^{-12}$, $2^{-11}$, $2^{-10}$},
+        ymajorgrids,
+        xticklabel={
+        \pgfkeys{/pgf/fpu=true}
+        \pgfmathparse{int(2^\tick)}
+        \pgfmathprintnumber[fixed]{\pgfmathresult}
+        },
+        legend style={at={(0.72,0.86)},anchor=north},
+        legend columns = 2,
+        legend cell align={left}
+    ]
+    
+    %change to fixed line
+    \addplot [color=black, domain=60:1060, dashed] {0.001295165};
+    \addlegendentry{10 CM (32KB)}
+
+    \addplot[color=red, mark=square] coordinates {
+        (64,0.000794505)
+        (128,0.000558492)
+        (256,0.000432703)
+        (512,0.00036593)
+        (1024,0.000330449)
+    };
+    \addlegendentry{MM}
+    
+    \addplot[color=blue, mark=triangle] coordinates {
+        (64,0.000822598)
+        (128,0.000510391)
+        (256,0.000373544)
+        (512,0.000305408)
+        (1024,0.00027242)
+    };
+    \addlegendentry{Linear Dist. TA-CM}
+    
+    \addplot[color=orange, mark=o] coordinates {
+        (64,0.000905932)
+        (128,0.000587575)
+        (256,0.000442481)
+        (512,0.000368815)
+        (1024,0.000332426)
+    };
+    \addlegendentry{Exponential Dist. TA-CM}
+    
+    \addplot[color=cyan, mark=star] coordinates {
+        (64,0.000832502)
+        (128,0.000521449)
+        (256,0.000382919)
+        (512,0.000314548)
+        (1024,0.000279836)
+    };
+    \addlegendentry{Arctan Dist. TA-CM}
+    
+    \addplot[color=green, mark=+] coordinates {
+        (64,0.000908105)
+        (128,0.000592652)
+        (256,0.000444668)
+        (512,0.000371463)
+        (1024,0.000335038)
+    };
+    \addlegendentry{Const Dist. TA-CM}
+    
+\end{axis}
+\begin{axis}[
+  scale only axis,
+  xlabel={Compression Ratio},
+    x label style={at={(axis description cs:0.5,1.27)},anchor=north},
+  xmin=60/2048,xmax=1060/2048,
+  xmode=log,
+  log basis x=2,
+  ymin= 0.001,
+  ymax = 100,
+  axis y line=none,
+  axis x line*=top,
+  xticklabels={$1$, $1/2$, $1/4$, $1/8$, $1/16$, $1/32$},
+  height = 2*0.18 \columnwidth,
+  width = 2*0.35 \columnwidth,]
+\end{axis}
+
+\end{tikzpicture}
+
+\caption{$n=10$ nodes: Compression method comparison - various distributions}\label{sktc-fig:10-servers-distribution-compression}
+\end{figure}
+
+\subsection{TA-KMV with $n$ ingestion nodes}\label{sktc-subsec:eval:kmv}
+%Replace the word record
+%replace the word number with # in X labels
+In this section, we evaluate \emph{TA-KMV}. We use the same method as in the previous section to generate the input stream. However, for this section, we use only the linear distribution. We compare our \emph{TA-KMV} with multiple compression ratios. The compression ratio is measured by \emph{Total Hash-values Sent (THS)}. To the best of our knowledge, no compression scheme is available for this sketch, and therefore we compare our method only to the baseline, i.e., each ingestion node sends $k$ hash values to the centralized server. Our measurement unit is the estimation precision rate to true cardinality. In this case, the number of hash values that are sent to the centralized server is $n \cdot k$, where $n$ is the number of ingestion nodes.
+
+\begin{figure}[!htb]
+\centering
+
+\begin{tikzpicture}[font=\small, scale=\myScale]
+
+\begin{axis}[
+        scale only axis,
+        xlabel={\# Servers ($n$)},
+        ylabel={Accuracy Rate},
+        xmin=9,
+        xmax=210,
+        ymin= 0.70,
+        ymajorgrids,
+        ymax = 1.1,
+        xmode=log,
+        log ticks with fixed point,
+        xtick = {5,10,20,50,100,200},
+        yticklabel=\pgfkeys{/pgf/number format/.cd,fixed,precision=2,zerofill}\pgfmathprintnumber{\tick},
+        height = 2*0.18 \columnwidth,
+        width = 2*0.35 \columnwidth,
+        legend style={at={(0.05,0.065)},anchor=south west},
+        legend cell align={left}
+    ]
+    
+    \addplot[color=blue, mark=triangle, error bars/.cd, y dir=both, y explicit relative] coordinates {
+(10,1.01612079900443)  += (10,0.0157908595664422) -=(10,0.0224356127165992)
+(20,1.01612079900443)  += (20,0.0162978598619865) -=(20,0.0224356127165992)
+(50,1.01612079900443)  += (50,0.0162978598619865) -=(50,0.0224356127165992)
+(100,1.01612079900443)  += (100,0.0162978598619865) -=(100,0.0224356127165992)
+(200,1.01612079900443)  += (200,0.0162978598619865) -=(200,0.0224356127165992)
+    };
+    \addlegendentry{MAWI}
+    
+    \addplot[color=green, mark=+, error bars/.cd, y dir=both, y explicit relative] coordinates {
+(10,0.988813459783557)  += (10,0.00800539555909119) -=(10,0.00595529407844508)
+(20,0.980463796203664)  += (20,0.00830907805368898) -=(20,0.00658938198094061)
+(50,0.931249963187018)  += (50,0.0109794749801466) -=(50,0.00797865392094566)
+(100,0.890186318982447)  += (100,0.0235224353515718) -=(100,0.0234221082610149)
+(200,0.861126139373611)  += (200,0.0342711777766666) -=(200,0.0462573349075841)
+    };
+    \addlegendentry{CAIDA}
+    
+    \addplot[color=orange, mark=o, error bars/.cd, y dir=both, y explicit relative] coordinates {
+(10,0.960038171361342)  += (10,0.0174336347135434) -=(10,0.0110330067979534)
+(20,0.960038171361342)  += (20,0.0124716598206064) -=(20,0.0110330067979534)
+(50,0.960038171361342)  += (50,0.0124716598206064) -=(50,0.0110330067979534)
+(100,0.960038171361342)  += (100,0.0124716598206064) -=(100,0.0110330067979534)
+(200,0.960038171361342)  += (200,0.0124716598206064) -=(200,0.0110330067979534)
+    };
+    \addlegendentry{KMV - No Compression}
+    
+\end{axis}
+
+\end{tikzpicture}
+
+
+
+\caption{TA-KMV vs baseline for $k=1024$.} \label{sktc-fig:kmv-sktc-eval}
+\end{figure}
+
+% \begin{table}[!htb]
+% 	\caption{Records sent for various compression methods}
+
+%     \centering
+% 	\begin{tabular}{|c|c|}
+% 	    \hline
+% 		\textbf{Plot}  & \textbf{\shortstack{THS sent for 200 ingestion nodes \\ (\% from max)}} \\ 
+% 		\hline
+% 		KMV - No Compression & 204800 (100\%)  \\ 
+% 		\hline
+% 		\emph{TA-KMV, THS}=$k\ln{k}$ & 7498 ( $\sim$ 3.6\%)  \\ 
+% 		\hline
+% 		\emph{TA-KMV, THS}=$2k\ln{k}$ & 14596 ( $\sim$ 7.1\%)  \\ 
+% 		\hline
+% 	\end{tabular}
+% 	\label{sktc-table:evaluation:sktc-kmv}
+% \end{table}
+
+Figure \ref{sktc-fig:kmv-sktc-eval} depicts the impact of the number of ingestion nodes on the accuracy rate of TA-KMV, \inred{with the confidence interval}. We define the accuracy rate as $\frac{\text{Estimation}}{\text{\# Flows}}$. \inblue{The figure shows that the estimation remains fairly accurate even at $100$ nodes. The CAIDA dataset does not have many flows, therefore the aggregate ends up receiving multiples of the same hash value, and thus the \inred{accuracy begins to drop}. For example, at 200 nodes the central server receives only 300 different hash values. Contrast this with MAWI, where, due to the larger number of small flows, the central server receives all 1024 of the smallest hash values. Consider the case of $50$ nodes. The baseline sends $51200$ hash values, whereas the compressed version send around $4150$ hash values -- a $92\%$ decrease for a near negligible decrease in accuracy. This creates a clear trade-off between the accuracy rate and the total summaries size. We note that sending less than $k \ln k$ hash values in total (e.g., $k$) greatly reduced the accuracy of the estimation.}
+%In Table \ref{sktc-table:evaluation:sktc-kmv} we show that  although TA-KMV accuracy slightly decreased, it saves more than 90\% of the total hash values sent over the network.
+%It allows network operators to decide whether they prefer to lose some accuracy and increase the possible bandwidth over the network, or increase the accuracy and pay more in management packets.
+
+
+\subsection{TA-HLL with $n$ ingestion nodes}
+
+
+
+\label{sktc-ssc:eval:TA-HLL}
+Lastly, we compare the  four methods for traffic aware cardinality estimation using compression of distributed HLL described in Section~\ref{sktc-sec:hll}. Recall that the methods are: 
+
+\emph{(i)} (Random) Each node reports each of its counters w.p. $p$.
+
+\emph{(ii)} (Weighted) Reporting a counter value $c$ w.p. $p_c$.
+
+\emph{(iii)} (Largest) Each node reports its  $\beta \cdot m$ largest counters.
+
+\emph{(iv)} (Threshold) Each node reports all its counters with values of at least a threshold $c_T$.
+
+We evaluate the results of these four methods with an HLL array with size 128, using the CAIDA and MAWAI datasets. We evaluate all the four methods through two metrics for accuracy: The first metric is the centralized node Array Recovery Rate given as the percentage of cells in the centralized node recovered array that are identical to the corresponding cells in a HLL sketch that could be computed over all network traffic. The second evaluated metric is the relative error: For a distributed HLL estimation $C$, and real stream cardinality $F$,  the relative error is $RE = \frac{|F-C|}{F}$. We first consider 10 ingestion nodes (and later vary their number).
+
+\begin{figure}[t!]
+\centering
+
+\begin{tikzpicture}[font=\small, scale=\myScale]
+
+\begin{axis}[
+        scale only axis,
+        xlabel={\% Data Sent},
+        ylabel={Array Recovery Rate},
+        xmin=9,
+        xmax=51,
+        ymin= 0,
+        ymajorgrids,
+        ymax = 1.02,
+        height = 2*0.16 \columnwidth,
+        width = 2*0.35 \columnwidth,
+        legend style={at={(0.05,0.065)},anchor=south west},
+        legend cell align={left}
+    ]
+    
+    \addplot[color=blue, mark=triangle, error bars/.cd, y dir=both, y explicit relative] coordinates {
+        (10,0.162523674242424)
+        (20,0.302260890151515)
+        (30,0.434067234848485)
+        (40,0.546223958333333)
+        (50,0.651811079545455)
+    };
+    \addlegendentry{\emph{Random Sampling}}
+    
+    \addplot[color=green, mark=+, error bars/.cd, y dir=both, y explicit relative] coordinates {
+        (10,0.46194365530303)
+        (20,0.755563446969697)
+        (30,0.889973958333333)
+        (40,0.956143465909091)
+        (50,0.986032196969697)
+    };
+    \addlegendentry{\emph{Weighted Sampling}}
+    
+    \addplot[color=orange, mark=o, error bars/.cd, y dir=both, y explicit relative] coordinates {
+        (10,0.486100852272727)
+        (20,0.721960227272727)
+        (30,0.830331439393939)
+        (40,0.89188446969697)
+        (50,0.914670928030303)
+    };
+    \addlegendentry{\emph{Largest Values}}
+    
+    \addplot[color=cyan, mark=*, error bars/.cd, y dir=both, y explicit relative] coordinates {
+        (10,0.582682291666667)
+        (20,0.848070549242424)
+        (30,0.953953598484849)
+        (40,0.990056818181818)
+        (50,0.998046875)
+    };
+    \addlegendentry{\emph{Threshold}}
+    
+\end{axis}
+
+\end{tikzpicture}
+
+\caption{TA-HLL Array Recovery Rate in CAIDA -- 10 ingestion nodes} \label{sktc-fig:eval-hll-arr}
+\end{figure}
+
+\begin{figure}[t!]
+\centering
+
+\begin{tikzpicture}[font=\small, scale=\myScale]
+
+\begin{axis}[
+        scale only axis,
+        xlabel={\% Data Sent},
+        ylabel={Relative Error},
+        xmin=9,
+        xmax=51,
+        ymin= 0,
+        ymajorgrids,
+        ymax = 1.02,
+        height = 2*0.16 \columnwidth,
+        width = 2*0.35 \columnwidth,
+        legend style={at={(0.02,0.04)},anchor=south west},
+        legend cell align={left}
+    ]
+    
+    \addplot [color=red, domain=9:210, dashed] {0.081807084};
+    \addlegendentry{\emph{Single Server HLL}}
+    
+    \addplot[color=blue, mark=triangle, error bars/.cd, y dir=both, y explicit relative] coordinates {
+        (10,0.989818001815833)
+        (20,0.968150415942164)
+        (30,0.904137272470303)
+        (40,0.750498757765852)
+        (50,0.550173699201597)
+    };
+    \addlegendentry{\emph{Random Sampling}}
+    
+    \addplot[color=green, mark=+, error bars/.cd, y dir=both, y explicit relative] coordinates {
+        (10,0.968407356663112)
+        (20,0.926128690744725)
+        (30,0.809747424055189)
+        (40,0.526700142191625)
+        (50,0.226103519616794)
+    };
+    \addlegendentry{\emph{Weighted Sampling}}
+    
+    \addplot[color=orange, mark=o, error bars/.cd, y dir=both, y explicit relative] coordinates {
+        (10,0.991935446090819)
+        (20,0.975726704254263)
+        (30,0.931307572956268)
+        (40,0.749948665319353)
+        (50,0.415925436754393)
+    };
+    \addlegendentry{\emph{Largest Values}}
+    
+    \addplot[color=cyan, mark=*, error bars/.cd, y dir=both, y explicit relative] coordinates {
+        (10,0.958849167188452)
+        (20,0.902461336487268)
+        (30,0.715378351707372)
+        (40,0.303923157641182)
+        (50,0.144018817238216)
+    };
+    \addlegendentry{\emph{Threshold}}
+    
+\end{axis}
+
+\end{tikzpicture}
+
+
+
+\caption{TA-HLL Relative Error in CAIDA -- 10 ingestion nodes} \label{sktc-fig:eval-hll-re}
+\end{figure}
+
+
+
+
+
+Figure \ref{sktc-fig:eval-hll-arr} shows the Array Recovery Rate for  the four methods, as a function of percentage of data sent across the network as part of all ingestion nodes HLL array sizes. Here, with 10 ingestion nodes and HLL array size of 128, the total size is 1280. 
+For instance, 20\% means sending a total of 256 values to the centralized server. 
+We can see that methods Weighted sampling (ii) and Threshold (iv) that require an iterative process with the centralized server achieve higher accuracy. 
+
+\begin{figure}[b!]
+\centering
+
+\begin{tikzpicture}[font=\small, scale=\myScale]
+
+\begin{axis}[
+        scale only axis,
+        xlabel={\# Servers ($n$)},
+        ylabel={Array Recovery Rate},
+        xmin=9,
+        xmax=210,
+        ymin= 0,
+        ymajorgrids,
+        ymax = 1.02,
+        xmode=log,
+        log ticks with fixed point,
+        xtick = {5,10,20,50,100,200},
+        height = 2*0.16 \columnwidth,
+        width = 2*0.35 \columnwidth,
+        legend style={at={(0.5,0.25)},anchor=south west, draw=none, opacity=1, fill=none},
+        legend cell align={left}
+    ]
+    
+    \addplot[color=blue, mark=triangle, error bars/.cd, y dir=both, y explicit relative] coordinates {
+        (10,0.162523674242424)
+        (20,0.165187026515152)
+        (50,0.169862689393939)
+        (100,0.180871212121212)
+        (200,0.173768939393939)
+    };
+    \addlegendentry{\emph{Random Sampling}}
+    
+    \addplot[color=green, mark=+, error bars/.cd, y dir=both, y explicit relative] coordinates {
+        (10,0.46194365530303)
+        (20,0.680101799242424)
+        (50,0.916903409090909)
+        (100,0.989701704545455)
+        (200,0.999585700757576)
+    };
+    \addlegendentry{\emph{Weighted Sampling}}
+    
+    \addplot[color=orange, mark=o, error bars/.cd, y dir=both, y explicit relative] coordinates {
+        (10,0.526100852272727)
+        (20,0.748579545454545)
+        (50,0.945371685606061)
+        (100,0.995442708333333)
+        (200,0.999881628787879)
+    };
+    \addlegendentry{\emph{Largest Values}}
+    
+    \addplot[color=cyan, mark=*, error bars/.cd, y dir=both, y explicit relative] coordinates {
+        (10,0.582682291666667)
+        (20,0.817708333333333)
+        (50,0.987215909090909)
+        (100,0.999940814393939)
+        (200,1)
+    };
+    \addlegendentry{\emph{Threshold}}
+    
+\end{axis}
+
+\end{tikzpicture}
+
+
+
+\caption{TA-HLL Array Recovery Rate in CAIDA  -- 10\% data sent} \label{sktc-fig:eval-hll-in-arr}
+\end{figure}
+
+\begin{figure}[b!]
+\centering
+
+\begin{tikzpicture}[font=\small,scale=\myScale]
+
+\begin{axis}[
+        scale only axis,
+        xlabel={\# Servers ($n$)},
+        ylabel={Relative Error},
+        xmin=9,
+        xmax=210,
+        ymin= 0,
+        ymajorgrids,
+        ymax = 1.02,
+        xmode=log,
+        log ticks with fixed point,
+        xtick = {5,10,20,50,100,200},
+        height = 2*0.16 \columnwidth,
+        width = 2*0.35 \columnwidth,
+        legend style={at={(0.01,0.04)},anchor=south west, draw=none, opacity=1, fill=none},
+        legend cell align={left}
+    ]
+    
+    \addplot [color=red, domain=9:210, dashed] {0.081807084};
+    \addlegendentry{\emph{Single Server HLL}}
+    
+    \addplot[color=blue, mark=triangle, error bars/.cd, y dir=both, y explicit relative] coordinates {
+        (10,0.989818001815833)
+        (20,0.973515139894837)
+        (50,0.91574909464158)
+        (100,0.888143415446563)
+        (200,0.87856880423703)
+    };
+    \addlegendentry{\emph{Random Sampling}}
+    
+    \addplot[color=green, mark=+, error bars/.cd, y dir=both, y explicit relative] coordinates {
+        (10,0.968407356663112)
+        (20,0.947318190605346)
+        (50,0.686897917425959)
+        (100,0.138120889057764)
+        (200,0.0827054662824469)
+    };
+    \addlegendentry{\emph{Weighted Sampling}}
+    
+    \addplot[color=orange, mark=o, error bars/.cd, y dir=both, y explicit relative] coordinates {
+        (10,0.991935446090819)
+        (20,0.979722025039235)
+        (50,0.800648090848471)
+        (100,0.116603690823036)
+        (200,0.0821491851664647)
+    };
+    \addlegendentry{\emph{Largest Values}}
+    
+    \addplot[color=cyan, mark=*, error bars/.cd, y dir=both, y explicit relative] coordinates {
+        (10,0.958849167188452)
+        (20,0.91577629304402)
+        (50,0.36283955355022)
+        (100,0.0827209569907977)
+        (200,0.081807083923316)
+    };
+    \addlegendentry{\emph{Threshold}}
+    
+\end{axis}
+
+\end{tikzpicture}
+
+
+
+\caption{TA-HLL Relative Error in CAIDA - 10\% data sent} \label{sktc-fig:eval-hll-in-re}
+\end{figure}
+
+\begin{figure}[b!]
+\centering
+
+\begin{tikzpicture}[font=\small,scale=\myScale]
+
+\begin{axis}[
+        scale only axis,
+        xlabel={\# Servers ($n$)},
+        ylabel={Relative Error},
+        xmin=9,
+        xmax=210,
+        ymin= 0,
+        ymajorgrids,
+        ymax = 1.02,
+        xmode=log,
+        log ticks with fixed point,
+        xtick = {5,10,20,50,100,200},
+        height = 2*0.16 \columnwidth,
+        width = 2*0.35 \columnwidth,
+        legend style={at={(0.01,0.04)},anchor=south west, draw=none, opacity=1, fill=none},
+        legend cell align={left}
+    ]
+    
+    \addplot [color=red, domain=9:210, dashed] {0.065548765};
+    \addlegendentry{\emph{Single Server HLL}}
+    
+    \addplot[color=blue, mark=triangle, error bars/.cd, y dir=both, y explicit relative] coordinates {
+        (10,0.997791172)
+        (20,0.992680167)
+        (50,0.934956428)
+        (100,0.90867773)
+        (200,0.901680999)
+    };
+    \addlegendentry{\emph{Random Sampling}}
+    
+    \addplot[color=green, mark=+, error bars/.cd, y dir=both, y explicit relative] coordinates {
+        (10,0.991108609)
+        (20,0.984747064)
+        (50,0.61894103)
+        (100,0.070554953)
+        (200,0.065548765)
+    };
+    \addlegendentry{\emph{Weighted Sampling}}
+    
+    \addplot[color=orange, mark=o, error bars/.cd, y dir=both, y explicit relative] coordinates {
+        (10,0.998044631)
+        (20,0.99495585)
+        (50,0.85833174)
+        (100,0.065548765)
+        (200,0.065548765)
+    };
+    \addlegendentry{\emph{Largest Values}}
+    
+    \addplot[color=cyan, mark=*, error bars/.cd, y dir=both, y explicit relative] coordinates {
+        (10,0.988117335)
+        (20,0.970737772)
+        (50,0.203320455)
+        (100,0.065548765)
+        (200,0.065548765)
+    };
+    \addlegendentry{\emph{Threshold}}
+    
+\end{axis}
+
+\end{tikzpicture}
+
+\caption{\inblue{TA-HLL Relative Error in MAWI - 10\% data sent}} \label{sktc-fig:eval-hll-in-re-mawi}
+\end{figure}
+
+Figure \ref{sktc-fig:eval-hll-re} presents the relative error of the same scenario, and as one could assume, the two graphs show coordinated results, i.e., the best method in terms of Array Recovery Rate (Threshold) allows lower Relative Error.  
+Note that computing the particular threshold values for each node might require a relatively complicated iterative process with the centralized server with potential tradeoff between the number of iterations and communication overhead.
+%However, In our simulations we ignored the communication that is needed to find the threshold value to be the correct percentile, in contrary to the Weighted Sampling method, in which we did not ignore the data that sent to the centralized node before the probability calculations. Which means that in realistic scenarios the Weighted Sampling method is possibly better than Threshold method.
+
+
+
+
+In Figures \ref{sktc-fig:eval-hll-in-arr}-\ref{sktc-fig:eval-hll-in-re-mawi}, we present the impact of the number of ingestion nodes across the network on accuracy. We used the same settings as described in previous figures, with only 10\% of the data sent to the centralized node and varied the number of ingestion nodes across the network. Once again the two methods with an iterative process with the centralized server are more accurate than the other two methods. Another observation is that as the number of ingestion nodes increases, the performance improves, that is because the total number of reports that arrive to the centralized node is increasing and as such, the probability to receive per each cell a value identical to that computed for the complete traffic is increasing as well.

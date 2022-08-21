@@ -1,0 +1,35 @@
+
+
+\pagestyle{empty}
+
+\section*{Appendix}
+
+\section{Locality proof}
+\label{ivl-sec:locality-proof}
+We now prove that IVL is a local property:
+\local
+\begin{proof}
+    Let $A$ be a deterministic algorithm, and let $\mathcal{H}_x$ be the sequential specification of object $x$, for every $x \in \mathcal{X}$.
+    The ``only if'' part is immediate.
+  
+    Denote by ${H_1^x}, {H_2^x}$ the linearizations of ${H|_x}^?$ guaranteed by the
+    definition of IVL.
+    We first construct a linearization $H_1$ of $H^?$, defined
+    by the order $\prec_{H_1}$ as follows: For every pending operation on object $x$, we either
+    add the corresponding response or remove it based on ${H_1^x}$. We then construct a partial order
+    of operations as the union of $\{{\prec}_{H_1^x}\}_{x \in \mathcal{X}}$ and the realtime order
+    of operations in $H$. As ${\prec}_{H_1^x}$ must adhere to the realtime order of $H|_x$,
+    and therefore $H$, and the order of operations in $\{{\prec}_{H_1^x}\}_{x \in \mathcal{X}}$ are disjoint, this partial order
+    is well defined. Consider two concurrent operations $op_1, op_2$ in $H$. If they
+    do not belong to the same history $H|_x$ for some object $x$, we order them arbitrarily in $\prec_{H_1}$.
+    We construct linearization $H_2$ of $H^2$ by defining the order of operations $\prec_2$ in a similar fashion.
+  
+    By construction all invocations and responses appearing in $H^?$ appear both in $H_1$ and in $H_2$,
+    and $H_1$ and $H_2$ preserve the partial order $\prec_{H^?}$. Therefore, $H_1$ and $H_2$ are linearizations
+    of $H^?$.
+    
+    Consider some read $R$ on some object $x \in \mathcal{X}$ that returns in $H$. As $H|_x$ is IVL
+    $\text{ret}(R,  \tau_{\mathcal{H}_x}(H_1^x) \leq \text{ret}(R, H|_x) \leq \text{ret}(R, \tau_{\mathcal{H}_x}(H_2^x))$.
+    Note that $\text{ret}(R, H|_x) = \text{ret}(R, H)$. Furthermore, $\text{ret}(R, \tau_{\mathcal{H}_x}(H_i^x))= \text{ret}(R, \tau_{\mathcal{H}}(H_i))$ for $i \in \{1,2\}$,
+    as objects other than $x$ do not affect the return value of this operation. Therefore $H$ is IVL.
+  \end{proof}

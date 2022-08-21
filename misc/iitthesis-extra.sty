@@ -53,7 +53,7 @@
 %\RequirePackage{lipsum}
 % amsthm causes problems with Hebrew, you get "Missing { inserted" after your \begin{theorem}
 % or any other theorem environment
-%\RequirePackage{amsthm}
+\RequirePackage{amsthm}
 
 % This should hopefully reduce missing font shape warnings; see
 % http://tex.stackexchange.com/a/58088/5640
@@ -76,7 +76,7 @@
 % which works for whether you have Hebrew or not,
 % or the original version plus a line of code which assumes you're
 % using Hebrew
-%\RequirePackage{algorithmic}
+% \RequirePackage{algorithmic}
 
 % Not too surprisingly, algorithmicx also does not like babel and Hebrew
 % too much, so you also need a similar workaround. Unfortunately, there
@@ -88,14 +88,14 @@
 % note that the above workaround might disrupt Hebrew numbering in some
 % cases (see rlbabel.def for details). With the workaround in place, we
 % can include the packages for algorithmicx:
-\RequirePackage{algorithmicx}
+% \RequirePackage{algorithmicx}
 % this defines algorithmic-like statement commands
-\RequirePackage{algcompatible}
+% \RequirePackage{algcompatible}
 
 % both algorithmic and algorithmicx are used in conjunction with the
 % algorithm package, which is used for the outer float environment
 % {algorithm}, which has the caption and delimiting rules
-\RequirePackage[chapter]{algorithm}
+% \RequirePackage[chapter]{algorithm}
 
 \providecommand*{\toclevel@algorithm}{0}
 
@@ -115,7 +115,7 @@
 % example, hyperref must load after algorithmicx, but before ntheorem
 
 \RequirePackage{hyperref}
-\RequirePackage[hyperref,thmmarks]{ntheorem} % must be loaded before bidi
+% \RequirePackage[hyperref,thmmarks]{ntheorem} % must be loaded before bidi
 \RequirePackage{amssymb} % for \blacksquare
 \RequirePackage{aliascnt}
 \RequirePackage{mathtools}

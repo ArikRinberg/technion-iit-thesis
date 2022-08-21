@@ -1,0 +1,120 @@
+\section{Lower bound for linearizable batched counter}
+\label{ivl-ssec:lower-bound}
+
+The incentive for using an IVL batched counter instead of a linearizable one stems
+from a lower bound on the step-complexity of a wait-free linearizable batched counter implementation from SWMR registers.
+To show the lower bound we first define the binary snapshot object.
+A \emph{snapshot object} has $n$ components written by separate processes, and allows a reader to
+capture the shared variable states of all $n$ processes instantaneously. We
+consider the \emph{binary snapshot object}, in which each state component may be either $0$ or $1$~\cite{hoepman1993binary}. The object
+supports the {\sc update}$_i$($v$) and {\sc scan} operations, where the former sets the state of component $i$
+to value $v \in \{0,1\}$ and the latter returns all processes states instantaneously.
+It is trivial that the {\sc scan} operation must read all states, therefore its lower bound step complexity
+is $\Omega(n)$. Israeli and Shriazi~\cite{israeli1998time} show that the {\sc update} step complexity
+of any implementation of a snapshot object from SWMR registers is also $\Omega(n)$. This lower bound
+was shown to hold also for multi writer registers~\cite{attiya2006complexity}. While
+their proof was originally given for a multi value snapshot object, it holds in the binary case as well~\cite{hoepman1993binary}.
+
+\begin{algorithm}
+    \begin{algorithmic}[1]
+        % \begin{multicols}{2}
+
+        \State local variable $v_i$ \Comment{Initialized to $0$}
+        \State shared batched counter object $\mathit{BC}$ \Comment{Initialized to $0$}
+        \Statex
+        \Procedure{update$_i$}{$v$}
+        \State \algorithmicif\ $v_i = v$\ \algorithmicthen\ \textbf{return} \label{ivl-l:skip}
+        \State $v_i \gets v$
+        \State \algorithmicif\ $v = 1$\ \algorithmicthen\ $\mathit{BC}$.{\sc update}$_i$($2^i$) \label{ivl-l:set-1}
+        \State \algorithmicif\ $v = 0$\ \algorithmicthen\ $\mathit{BC}$.{\sc update}$_i$($2^n - 2^i$) \label{ivl-l:set-0}
+        \EndProcedure
+        % \columnbreak
+        \Procedure{scan}{}
+        \State $\mathit{sum} \gets \mathit{BC}$.{\sc read}() \label{ivl-l:read} % $\mod 2^n$
+        \State $v[0 \dots n-1] \gets [0 \dots 0]$ \Comment{Initialize an array of $0$'s}
+        \For{$i : 0 \leq i \leq n-1$}
+        \State \algorithmicif\ bit $i$ is set in $\mathit{sum}$\ \algorithmicthen\ $v[i] \gets 1$ \label{ivl-l:check-set}
+        \EndFor
+        \State \textbf{return} $v[0 \dots n-1]$
+        \EndProcedure
+    % \end{multicols}
+    \end{algorithmic}
+    \caption{Algorithm for process $p_i$, solving binary snapshot with a batched counter object.}
+    \label{ivl-alg:bs-with-adder}
+\end{algorithm}
+
+To show a lower bound on the {\sc update} operation of wait-free linearizable batched counters,
+we show a reduction from a binary snapshot to a batched counter in
+Algorithm~\ref{ivl-alg:bs-with-adder}. It uses a local variable $v_i$ and a shared batched counter object.
+In a nutshell, the idea is to encode the value of the $i^\text{th}$ component
+of the binary snapshot using the $i^\text{th}$ least significant bit of the counter.
+When the component changes from $0$ to $1$, {\sc update}$_i$ adds $2^i$, and when it changes from $1$ to $0$,
+{\sc update}$_i$ adds $2^n - 2^i$. We now prove the following invariant:
+\begin{invariant}
+    \inred{For any prefix $H'$ of $H$ of length $t$} of a sequential execution of Algorithm~\ref{ivl-alg:bs-with-adder},
+    the sum held by the counter is $c \cdot 2^n + \sum_{i=0}^{n-1}v_i2^i$,
+    such that $v_i$ is the parameter passed to the last invocation of {\sc update}$_i$ in $H'$ if such invocation
+    exists, and $0$ otherwise, for some integer $c \in \mathbb{N}$.
+    \label{ivl-inv:sum}
+\end{invariant}
+\begin{proof}
+    We prove the invariant by induction on the length of $H$, i.e., the number of invocations in $H$,
+    denoted $t$. As $H$ is a sequential history, each invocation is followed by a response.
+    %\par{\textbf{Base:}}
+    The base if for $t=0$, i.e., $H$ is the empty execution. In this case no updates
+    have been invoked, therefore $v_i=0$ for all $0 \leq i \leq n-1$. The sum returned by the counter
+    is $0$. Choosing $c=0$ satisfies the invariant.
+    %\par{\textbf{Induction step:}}
+    Our induction hypothesis is that the invariant holds for a history of length $t$.
+    We prove that it holds for a history of length $t+1$. The last invocation can be either a {\sc scan}, or an {\sc update}($v$)
+    by some process $p_i$. If it is a {\sc scan}, then the counter value doesn't change and the invariant
+    holds. Otherwise, it is an {\sc update}($v$). Here, we note two cases. Let $v_i$ be $p_i$'s value
+    prior to the {\sc update}($v$) invocation. If $v = v_i$, then the {\sc update} returns without altering the sum
+    and the invariant holds. Otherwise, $v \neq v_i$. We analyze two cases, $v=1$ and $v=0$. If $v=1$, then $v_i=0$.
+    The sum after the update is $c \cdot 2^n + \sum_{i=0}^{n-1}v_i2^i + 2^i=c \cdot 2^n + \sum_{i=0}^{n-1}v_i'2^i$, where
+    $v_j'=v_j$ if $j \neq i$, and $v'_i = 1$, and the invariant holds. If $v=0$, then $v_i=1$.
+    The sum after the update is $c \cdot 2^n + \sum_{i=0}^{n-1}v_i2^i + 2^n - 2^i = (c+1) \cdot 2^n + \sum_{i=0}^{n-1}v_i'2^i$,
+    where $v_j'=v_j$ if $j \neq i$, and $v'_i = 1$, and the invariant holds.
+\end{proof}
+
+Using the invariant, we prove the following lemma:
+\begin{lemma}
+    For any sequential history $H$, if a {\sc scan} returns $v_i$, and {\sc update}$_i$($v$) is the last update invocation in $H$
+    prior to the {\sc scan}, then $v_i = v$. If no such update exists, then $v_i=0$.
+    \label{ivl-lmma:scan-correctness}
+\end{lemma}
+\begin{proof}
+    Let $S$ be a {\sc scan} in $H'$. Consider the sum $\textit{sum}$ as read by scan $S$.
+    From Invariant~\ref{ivl-inv:sum}, the value held by the counter is $c \cdot 2^n + \sum_{i=0}^{n-1}v_i2^i$.
+    There are two cases, either there is an update invocation prior to $S$, or there isn't. If there isn't, then by
+    Invariant~\ref{ivl-inv:sum} the corresponding $v_i=0$. The process sees bit $i=0$,
+    and will return $0$. Therefore, the lemma holds.
+
+    Otherwise, there is a an update prior to $S$ in $H$. As the sum is equal to $c \cdot 2^n + \sum_{i=0}^{n-1}v_i2^i$,
+    by Invariant~\ref{ivl-inv:sum}, bit $i$ is equal to $1$ iff the parameter passed to the last invocation of update was $1$.
+    Therefore, the scan returns the parameter of the last update and the lemma holds.
+\end{proof}
+
+\begin{lemma}
+    Algorithm~\ref{ivl-alg:bs-with-adder} implements a linearizable binary snapshot using a linearizable batched counter.
+    \label{ivl-lmma:reduction}
+\end{lemma}
+\begin{proof}
+    Let $H$ be a history of Algorithm~\ref{ivl-alg:bs-with-adder}, and let $H'$ \inred{be the subset of operations in $H$ that
+    access the linearizable batched counter (and removed otherwise),}
+    where each operation is linearized at its access to the linearizable batched counter \inred{with responses added to
+    pending operations}, or
+    its response if $v_i = v$ on line~\ref{ivl-l:skip}.
+    Applying Lemma~\ref{ivl-lmma:scan-correctness} to $H'$, we get $H' \in \mathcal{H}$ and therefore $H$ is linearizable.
+\end{proof}
+
+It follows from the algorithm that if the counter
+object is bounded wait-free then the {\sc scan} and {\sc update} operations are bounded wait-free. Therefore, the lower
+bound proved by Israeli and Shriazi~\cite{israeli1998time} holds, and the {\sc update} must take $\Omega(n)$
+steps. Other than the access to the counter in the {\sc update} operation, it takes
+$O(1)$ steps. Therefore, the access to the counter object must take $\Omega(n)$ steps. We have proven the following theorem.
+\begin{theorem}
+    For any linearizable wait-free implementation of a batched counter object with $n$ processes from SWMR registers, the step-complexity
+    of the {\sc update} operation is $\Omega(n)$.
+    \label{ivl-thm:lower-bound}
+\end{theorem}

@@ -1,0 +1,70 @@
+\documentclass[11pt, letterpaper]{article}
+  
+
+\input{mypackages.tex}
+\input{mystyle.tex}
+
+% declaration of variables and foreach blocks
+\algblock{Vars}{EndFor}
+\algrenewtext{Vars}{variables}
+\algrenewtext{EndVars}{}
+\algblock{ForEach}{EndFor}
+\algrenewtext{ForEach}{for each }
+
+
+\begin{document}
+
+
+%\title{\vspace{-0.5in} Fast Concurrent Data Sketches}
+\title{Fast Concurrent Data Sketches\footnote{An extended abstract describing this result
+appears in PPoPP 2020 with the same authors and title.
+The current version contains detailed correctness proofs
+that are absent in the extended abstract, in particular all of Section 6 and mathematical derivations in Section 7.}}
+%with Lightweight Synchronization}
+
+\author{Arik Rinberg, Alexander Spiegelman, Edward Bortnikov, Eshcar Hillel \\ Idit Keidar, Lee Rhodes, Hadar Serviansky}
+   
+
+
+\date{\vspace{-0.5in}}
+
+\maketitle
+
+\input{abstract.tex}
+
+%\newpage
+%\pagenumbering{arabic}
+
+\input{intro.tex}
+
+\input{model.tex}
+
+\input{background.tex}
+
+\input{relaxed.tex}
+
+\input{algorithm.tex}
+
+\input{proof.tex}
+
+\input{errorBounds.tex}
+
+\input{evaluation.tex}
+
+%\input{sections/appendixEvaluation.tex}
+%\input{sections/Evaluation.tex}
+
+
+\input{discussion.tex}
+
+
+\bibliographystyle{plain}
+\bibliography{bibliography}
+
+\clearpage
+
+\appendix
+
+\input{artifact.tex}
+
+\end{document}

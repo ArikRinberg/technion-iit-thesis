@@ -1,0 +1,27 @@
+\section{Conclusion}
+\label{ivl-sec:conclusion}
+
+We have presented IVL, a new correctness criterion that provides flexibility
+in the return values of quantitative objects while bounding the error that this may
+introduce. IVL has a number of desirable properties: First,
+like linearizability, it is a local property, allowing designers to reason about each part
+of the system separately. Second, also like linearizability but unlike other relaxations of
+it, IVL preserves the error bounds of PAC objects. Third, IVL is generically defined for
+all quantitative objects, and does not necessitate object-specific definitions. Finally,
+IVL is inherently amenable to cheaper implementations than linearizability in some cases.
+
+Via the example of a CountMin sketch, we have illustrated that IVL provides
+a generic way to efficiently parallelize data sketches while leveraging their
+sequential error analysis to bound the error in the concurrent implementation.
+
+We have shown that IVL can also capture the semantics of non-atomic snapshots,
+by augmenting the data structure with an auxiliary history
+variable. Finally, we have shown that sometimes IVL is useful
+in tandem with other correctness criteria via the
+example of a priority queue, where we pair IVL with sequential consistency.
+
+The notion of IVL raises a main question for future research:
+In this work we have shown that IVL is a sufficient condition for parallel
+$(\epsilon,\delta)$-bounded objects, in that it preserves their sequential
+error. It would be interesting to investigate whether IVL is also necessary,
+or whether some weaker condition is sufficient.

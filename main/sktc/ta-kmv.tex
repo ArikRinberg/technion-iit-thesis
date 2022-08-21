@@ -1,0 +1,30 @@
+We now present Traffic-Aware KMV (\emph{TA-KMV}), a method to compress the KMV sketch~\cite{giroire2009order, KMV}, \inred{a known tool for computing the number of distinct flows in a stream, also known as its cardinality}.  For the case of a single node KMV works as follows: For every flow $f_1,f_2,\dots$ it generates \inred{hash values} $h_1,h_2,\dots$ and it retains the $k$ smallest values - $\{h_1', h_2', \dots, h_k'\}$. The cardinality estimation the sketch calculates is $\frac{k}{\max\limits_{i \in [1,k]}\{h_i'\}}$. Errors can include \inred{overestimations} or underestimations of the cardinality and the relative standard error is $\frac{1}{\sqrt{k}}$. 
+
+
+\inred{Also for this sketch we} refer to the scenario presented in Figure~\ref{sktc-fig:ingestion-nodes}, with nodes sending summaries to a centralized server through a channel with bounded bandwidth.  
+As a simple baseline solution, every node can compute the hash values for all the flows it observes and send the $k$ minimal values among them to the centralized node. This results in a total number of $n \cdot k$ values sent over the network. \inred{Then, the central node simply orders
+all the $n \cdot k$ values it receives for computing the value which is the $k$-th smallest in its size among them, denoted as $h'_k$. It estimates the cardinality of the complete stream as $\frac{k}{h'_k}$. Note that although not all observed values were shared by the various nodes, the value of $h'_k$ necessarily equals the $k$-th smallest hash value among all the values for the complete stream.}
+
+\inred{
+We aim to develop solution that reduces the total number of values that are sent for better utilizing the available bandwidth.} 
+
+Our proposal for this distributed sketch is as follows: Given parameter $k$, we instantiate \emph{KMV sketch} on the ingestion nodes with parameter $k \ln{k}$. When the ingestion ends, the following communication takes place:
+
+\emph{(i)} Ingestion nodes report their cardinality estimation size to the centralized server.
+
+\emph{(ii)} The central server computes for each ingestion node $i$ its compression ratio $n_i$.
+
+\emph{(iii)} Each ingestion node sends its $n_i$ minimal values to the centralized server.
+
+We suggest a heuristic of calculating compression ratios $n_i$. We are unable to provide closed form error bounds for this heuristic. Instead, in Section~ \ref{sktc-sec:evaluation}, we show that this method performs well in realistic scenarios.
+
+The goal is for the centralized server to receive some group of $k$ flow hashes such that the group has as large overlap as possible with the group of global $k$ minimal flow hashes. The method works as follows: Let $e_i$ be the cardinality estimation of server $i$. First, each ingestion node $i$ sends $e_i$ to the central server, and receives the total estimation $\sum\limits_{j=1}^n e_j$ in return. Each ingestion node $i$ can then compute the estimation ratio
+$r_i = \frac{e_i}{\sum\limits_{j=1}^n e_j}$ and sends a summary of size  $s_i = r_i \cdot k \ln{k}$. In this case the total summaries size is: 
+\[\sum\limits_{i=1}^n s_i = \sum\limits_{i=1}^n  r_i \cdot k \ln{k}= k\ln{k}\sum\limits_{i=1}^n \frac{e_i}{\sum\limits_{j=1}^n e_j} = k\ln{k}, \]
+and accordingly the total size of sent data is $k\ln{k} + 2n$.
+
+\forRevThree{The reason we deliberately suggest sending more then $k$ values is that multiple ingestion nodes may observe traffic from the same flow, and hash values may repeat in the values sent to the centralized node. In such cases among the centralized node will not receive sufficient distinct hash values to achieve the necessary error bounds.}
+
+\forRevThree{We suggest sending $O(k\ln{k})$ hash values, as we observe a similarity between the \emph{TA-KMV} and the coupon collector problem~\cite{feller1957introduction, boneh1997coupon}. In the \emph{TA-KMV} the minimal $k$ hash values correspond with coupons, and the goal of the centralized node is to gather these $k$ values in order to achieve a result with an error that is similar to a single node processing the whole stream.} While we have no closed-form bounds, the evaluation shows that this method performs well in practice. Note that the coupon collector problem assumes each coupon is drawn independently, which is not the case in our scenario. E.g., the smallest hash may come from a very large stream that appears in every node -- in this case, the smallest hash in each node is not independent.
+
+% The $\ln{k}$ factor is needed due to collisions -- two nodes $i,j$ may receive the same flow with some small hash and both send it. As the hash is only saved once, the centralized node ends with less than $k$ hashes. We consider the coupon collector problem \cite{feller1957introduction, boneh1997coupon} and its solutions, such that the coupons are the $k$ smallest hashes. For the centralized server to have these smallest hashes (with high probability) all ingestion nodes must send a total of at least $k\ln{k}$ values. The evaluation shows that this method performs well in practical scenarios, and also shows that one can change this ratio in order to achieve a trade-off between precision and bandwidth usage. Note that the coupon collector assumes each coupon is drawn independently from a uniform distribution which is not the case in our scenario\inblue{, as packets in a flow are not independent of each other. Therefore, we slightly differ from the literature of coupon collecting.} In the analyzed scenarios, the centralized server generally ended with more than the $k$ smallest hashes.

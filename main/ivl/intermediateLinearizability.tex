@@ -1,0 +1,502 @@
+\section{Intermediate value linearizability}
+\label{ivl-sec:ivl}
+
+Section~\ref{ivl-ssec:definitions} introduces definitions that we utilize to define IVL.
+Section~\ref{ivl-ssec:ivl} defines IVL for deterministic algorithms and proves that it is a local property.
+Section~\ref{ivl-ssec:sivl} extends IVL for randomized algorithms, and Section~\ref{ivl-ssec:comparisons}
+compares IVL to other correctness criteria.
+
+\subsection{Definitions}
+\label{ivl-ssec:definitions}
+
+Our definitions use the notion of skeleton histories:
+A \emph{skeleton history} is a sequence of invocation and response events, where the return values
+of the responses are undefined, denoted $?$. For a history $H$, we define the operator $H^?$
+as altering all response values in $H$ to $?$, resulting in a skeleton
+history.
+% Consider a randomized algorithm $A$, a schedule $\sigma$, and
+% two coin flip vectors $\vv{c}, \vv{c}' \in \Omega^{\infty}$. From the uniform
+% step complexity assumption, $\left[H(A, \vv{c}, \sigma)\right]^?=\left[H(A, \vv{c}', \sigma)\right]^?$,
+% i.e., the skeleton history of a randomized algorithm's execution is uniquely determined by
+% the schedule $\sigma$.
+
+In this paper we discuss correctness criteria for a class of objects we call
+\emph{quantitative}. These are objects that support two operations: (1) {\sc update},
+which captures all mutating operations \inred{that do} not return a value; and (2) {\sc query},
+which returns a value from some \emph{partially ordered set (poset)}. A poset
+defines a partial relation between elements from the set, denoted $\leq$.
+In Section~\ref{ivl-sec:examples} we exemplify our definitions for three types of return
+values: (1) numerical values (a totally ordered domain), (2) sets of elements ordered
+by containment (a partially ordered domain), and (3) ranked items stored in a priority
+queue (a totally ordered domain).
+
+In a \emph{deterministic quantitative object}
+the return values of {\sc query} operations are uniquely defined. Namely, the object's sequential specification $\mathcal{H}$
+contains exactly one history for every sequential history skeleton $H$; we denote this
+history by $\tau_\mathcal{H}(H)$. Thus, $\tau_\mathcal{H}(H^?) = H$ for every history $H\in \mathcal{H}$.
+Furthermore, for every sequential skeleton history $H$, by definition, $\tau_\mathcal{H}(H) \in \mathcal{H}$.
+\inred{Note that if the object is not deterministic, $\tau_\mathcal{H}(H^?)$ isn't uniquely defined. We
+use the following example to show how skeleton histories can be linearized and then converted back to histories:}
+
+\begin{example}
+
+Consider an execution in which a batched counter (formally defined in Section~\ref{ivl-ssec:lower-bound}) initialized to $0$
+is incremented by $3$ by process $p$ concurrently with a query by
+process $q$, which returns $0$. Its history is:
+\[ H = inv_p(inc(3)), inv_q(query), rsp_p(inc), rsp_q(query \rightarrow 0). \]
+The skeleton history $H^?$ is:
+\[ H^? = inv_p(inc(3)), inv_q(query), rsp_p(inc), rsp_q(query \rightarrow ?). \]
+A possible linearization of $H^?$ is:
+\[ H'=inv_p(inc(3)), rsp_p(inc), inv_q(query), rsp_q(query \rightarrow ?). \]
+Given the sequential specification $\mathcal{H}$ of a batched counter,
+we get:
+\[ \tau_\mathcal{H}(H')=inv_p(inc(3)), rsp_p(inc), inv_q(query), rsp_q(query \rightarrow 3). \]
+In a different linearization, the query may return $0$ instead.
+
+\end{example}
+
+\subsection{Intermediate value linearizability}
+\label{ivl-ssec:ivl}
+
+% We consider objects supporting two operations, {\sc update} and {\sc query},
+% where the former captures all mutating operations. Furthermore, all return
+% values are from a totally ordered domain. We call such objects \emph{quantitative}
+% objects. The return values in each sequential
+% execution, i.e., the sequential specification $\mathcal{H}$, can be defined as a sequential
+% deterministic algorithm $A$. By slight abuse of notation, we use $A$ as the
+% sequential specification in this case. Given a deterministic algorithm
+% $A$, this allows us to embody a sequential skeleton history $H^?$ by adding the
+% correct return values, denoted $H^?(A)$, i.e., executing the operations on $A$ in the order
+% that they happen in $H^?$. By definition, $H^?(A) \in \mathcal{H}$.
+
+% We formalize correctness criteria for objects whose return values are from
+% some \emph{partially ordered set (poset)}. A poset defines a partial relation between
+% elements from the set, denoted $\leq$. An example of a poset is a power set over $S$,
+% i.e., the set of all sets. In this case, the relation is $\subseteq$. A quantitative object is
+% an example of such an object, as the \textsc{query}
+% operation returns a value from a totally ordered domain.
+We now define intermediate value linearizability.
+
+% \begin{definition}[Intermediate value linearizability]
+%   A history $H$ of an object is IVL with respect to sequential specification $\mathcal{H}$ if there
+%   exist two linearizations $H_1, H_2$ of $H^?$ such that for every operation $o$ that returns a
+%   value from some partially ordered set $(S, \leq)$ in $H$,
+%   \[\text{ret}(o, \tau_\mathcal{H}(H_1)) \leq \text{ret}(o, H) \leq \text{ret}(o, \tau_\mathcal{H}(H_2)). \]
+
+%   Algorithm $A$ is an \emph{IVL implementation} of a sequential specification $\mathcal{H}$ if every
+%   history of a well-formed execution of $A$ is IVL with respect to $\mathcal{H}$.
+%   \label{ivl-def:ivl}
+% \end{definition}
+    
+
+\begin{definition}[Intermediate value linearizability]
+  A history $H$ of an object is IVL with respect to sequential specification $\mathcal{H}$ if there
+  exist two linearizations $H_1, H_2$ of $H^?$ such that for every {\sc query} $Q$
+  that returns in $H$,
+  \[\text{ret}(Q, \tau_\mathcal{H}(H_1)) \leq \text{ret}(Q, H) \leq \text{ret}(Q, \tau_\mathcal{H}(H_2)). \]
+
+  Algorithm $A$ is an \emph{IVL implementation} of a sequential specification $\mathcal{H}$ if every
+  history of a well-formed execution of $A$ is IVL with respect to $\mathcal{H}$.
+  \label{ivl-def:ivl}
+\end{definition}
+
+Note that a linearizable object is trivially IVL, as the skeleton history of the linearization of $H$ plays the roles
+of both $H_1$ and $H_2$. We emphasize that in a sequential execution, an IVL object is not relaxed
+in any way -- it must follow the sequential specification. Similarly, in a well-formed history,
+operations of the same process never overlap, and so IVL executions satisfy program order.
+
+\inred{We now show that IVL is both local and non-blocking(as defined in~\cite{herlihy1990linearizability}):}
+%The following theorem shows that this property is local (as defined in~\cite{herlihy1990linearizability}):
+\begin{restatable}{thm}{local}
+  \label{ivl-thm:ivl-local}
+  A history $H$ of a well-formed execution of algorithm $A$ over a set of objects $\mathcal{X}$
+  is IVL if and only if for each object $x \in \mathcal{X}$, $H|_x$ is IVL.
+\end{restatable}
+\begin{proof}
+  Let $A$ be a deterministic algorithm, and let $\mathcal{H}_x$ be the sequential specification of object $x$, for every $x \in \mathcal{X}$.
+  The ``only if'' part is immediate.
+
+  Denote by ${H_1^x}, {H_2^x}$ the linearizations of ${H|_x}^?$ given by the
+  definition of IVL.
+  We first construct a linearization $H_1$ of $H^?$, \inred{i.e., the order $\prec_{H_1}$},
+  as follows: For every pending operation on object $x$, we either
+  add the corresponding response or remove it based on ${H_1^x}$. We then construct a partial order
+  of operations as the union of $\{{\prec}_{H_1^x}\}_{x \in \mathcal{X}}$ and the realtime order
+  of operations in $H$. As each ${\prec}_{H_1^x}$ must adhere to the realtime order of $H|_x$,
+  and therefore $H$, and the set of operations $\{{\prec}_{H_1^x}\}_{x \in \mathcal{X}}$ are disjoint, this partial order
+  is well defined. Consider two concurrent operations $op_1, op_2$ in $H$. If they
+  do not belong to the same history $H|_x$ for some object $x$, we order them arbitrarily in $\prec_{H_1}$.
+  We construct linearization $H_2$ of $H^2$ by defining the order of operations $\prec_{H_2}$ in a similar fashion,
+  \inred{ where the added responses or removed pending operations are based on ${H_2^x}$ instead of ${H_1^x}$}.
+
+  By construction all invocations and responses appearing in $H^?$ appear both in $H_1$ and in $H_2$,
+  and $H_1$ and $H_2$ preserve the partial order $\prec_{H^?}$. Therefore, $H_1$ and $H_2$ are linearizations
+  of $H^?$.
+  
+  Consider some read $R$ on some object $x \in \mathcal{X}$ that returns in $H$. As $H|_x$ is IVL
+  $\text{ret}(R,  \tau_{\mathcal{H}_x}(H_1^x)) \leq \text{ret}(R, H|_x) \leq \text{ret}(R, \tau_{\mathcal{H}_x}(H_2^x))$.
+  Note that $\text{ret}(R, H|_x) = \text{ret}(R, H)$.
+  Furthermore, $\text{ret}(R, \tau_{\mathcal{H}_x}(H_1^x))= \text{ret}(R, \tau_{\mathcal{H}}(H_1))$
+  and $\text{ret}(R, \tau_{\mathcal{H}_x}(H_2^x))= \text{ret}(R, \tau_{\mathcal{H}}(H_2))$,
+  as objects other than $x$ do not affect the return value of this operation. Therefore $H$ is IVL.
+\end{proof}
+% \begin{theorem}
+%   A history $H$ of a well-formed execution of algorithm $A$ over a set of objects $\mathcal{X}$
+%   is IVL if and only if for each object $x \in \mathcal{X}$, $H|_x$ is IVL.
+% \end{theorem}
+% \begin{proof}
+%   Let $A$ be a deterministic algorithm, and let $\mathcal{H}_x$ be the sequential specification of object $x$, for every $x \in \mathcal{X}$.
+%   The ``only if'' part is immediate.
+
+%   Denote by ${H_1^x}, {H_2^x}$ the linearizations of ${H|_x}^?$ guaranteed by the
+%   definition of IVL.
+%   We first construct a linearization $H_1$ of $H^?$, defined
+%   by the order $\prec_{H_1}$ as follows: For every pending operation on object $x$, we either
+%   add the corresponding response or remove it based on ${H_1^x}$. We then construct a partial order
+%   of operations as the union of $\{{\prec}_{H_1^x}\}_{x \in \mathcal{X}}$ and the realtime order
+%   of operations in $H$. As ${\prec}_{H_1^x}$ must adhere to the realtime order of $H|_x$,
+%   and therefore $H$, and the order of operations in $\{{\prec}_{H_1^x}\}_{x \in \mathcal{X}}$ are disjoint, this partial order
+%   is well defined. Consider two concurrent operations $op_1, op_2$ in $H$. If they
+%   do not belong to the same history $H|_x$ for some object $x$, we order them arbitrarily in $\prec_{H_1}$.
+%   We construct linearization $H_2$ of $H^2$ by defining the order of operations $\prec_2$ in a similar fashion.
+
+%   By construction all invocations and responses appearing in $H^?$ appear both in $H_1$ and in $H_2$,
+%   and $H_1$ and $H_2$ preserve the partial order $\prec_{H^?}$. Therefore, $H_1$ and $H_2$ are linearizations
+%   of $H^?$.
+  
+%   Consider some read $R$ on some object $x \in \mathcal{X}$ that returns in $H$. As $H|_x$ is IVL
+%   $\text{ret}(R,  \tau_{\mathcal{H}_x}(H_1^x) \leq \text{ret}(R, H|_x) \leq \text{ret}(R, \tau_{\mathcal{H}_x}(H_2^x))$.
+%   Note that $\text{ret}(R, H|_x) = \text{ret}(R, H)$. Furthermore, $\text{ret}(R, \tau_{\mathcal{H}_x}(H_i^x))= \text{ret}(R, \tau_{\mathcal{H}}(H_i))$ for $i \in \{1,2\}$,
+%   as objects other than $x$ do not affect the return value of this operation. Therefore $H$ is IVL.
+% \end{proof}
+
+Locality allows system designers to reason about their system in a modular fashion. Each object can be built separately,
+and the system as a whole still satisfies the property.
+\inred{
+\begin{theorem}
+  \label{ivl-thm:ivl-non-blocking}
+  Let $H$ be an IVL history of a well-formed execution of a algorithm $A$. If $inv_p(op(arg))$ is an invocation
+  of a pending operation in $H$, then there exists $rsp_p(op)\rightarrow ret$ such that $H \cdot rsp_p(op)\rightarrow ret$
+  is IVL.
+\end{theorem}
+\begin{proof}
+  Let $H$ be an IVL history of a well-formed execution of a algorithm $A$. Let $inv_p(op(arg))$ be an invocation
+  of a pending operation in $H$. If the invocation is not that of a {\sc query} operation, then
+  $H \cdot rsp_p(op)\rightarrow \bot$ is IVL. Otherwise,  denote the query as $Q$.
+  
+  Let $H^?$ be the skeleton history of $H$. Denote $H' = H^? \cdot rsp_p(op)\rightarrow ?$.
+  Note that $H'$ is also a skeleton history. Let $H''$ be some linearization of $H'$. Finally, let
+  $v=\text{ret}(Q, \tau_\mathcal{H}(H''))$. Then, $H \cdot rsp_p(op)\rightarrow v$ is IVL,
+  where $H_1=H_2=H''$.
+\end{proof}
+}
+
+\subsection{Extending IVL for randomized algorithms}
+\label{ivl-ssec:sivl}
+
+% the specification of the deterministic algorithm $A(\vv{c})$ is given
+% by the deterministic sequential specification $\mathcal{H}(\vv{c})$.
+% Thus, a randomized sequential specification is a distribution over deterministic sequential specifications
+% $\mathcal{H}(\vv{c})$ with coin flip vectors $\vv{c} \in \Omega^\infty$, i.e., a distribution over
+
+% A randomized sequential specification is a distribution over deterministic sequential specifications
+% $\mathcal{H}(\vv{c})$ with coin flip vectors $\vv{c} \in \Omega^\infty$. Recall that we consider
+% a weak adversary in this paper. Under such an adversary,
+% a randomized sequential algorithm A satisfies $\mathcal{H}$ if for
+% every schedule $\sigma$, under a randomly sampled coin flip
+% vector $\vv{c} \in \Omega^\infty$, $H(A,\vv{c},\sigma) \in \mathcal{H}(\vv{c})$. This
+% means that for a given schedule $\sigma$, the distribution of return values
+% in $A(\vv{c})$ is the same as in $\mathcal{H}(\vv{c})$.
+
+\inred{For the remainder of this paper we consider the strongest progress guarantee, bounded wait-freedom.
+\inred{An operation $op$ is \emph{wait-free} if whenever a process $p$ invokes $op$, $op$ returns
+a response regardless of steps taken by other processes.}
+An operation $op$ is \emph{bounded wait-free} if whenever any process $p$
+invokes $op$, $op$ returns a response in a bounded number of
+$p$'s steps, regardless of steps taken by other processes.
+An operation's \emph{step-complexity} is the maximum number of steps
+a process takes during a single execution of this operation. We
+can convert every bounded wait-free algorithm to a \emph{uniform step complexity}
+one, in which each operation takes the exact same
+number of steps in every execution.
+This can be achieved by padding shorter
+execution paths with empty steps before returning.
+Note that in a randomized algorithm with uniform step complexity, coin flips have
+no impact on $op$'s execution times.}
+
+In a randomized algorithm $A$ with uniform step complexity, every invocation
+of a given operation returns after the same number of steps,
+regardless of the coin flip vector $\vv{c}$. This, in turn, implies that
+for a given $\sigma$, for any $\vv{c}, \vv{c}' \in \Omega^{\infty}$, the
+arising histories $H(A, \vv{c}, \sigma)$ and $H(A, \vv{c}', \sigma)$ differ only in the operations'
+return values but not in the order of invocations and responses, as the latter is
+determined by $\sigma$, so their skeletons are equal. For randomized algorithm $A$ and schedule $\sigma$,
+we denote this arising skeleton history by $H^?(A, \sigma)$.
+% Furthermore, for any two coin flip vectors $\vv{c}, \vv{c}' \in \Omega^{\infty}$,
+% $H^?(A, \sigma) \triangleq \left[H(A, \vv{c}, \sigma)\right]^?=\left[H(A, \vv{c}', \sigma)\right]^?$.
+
+We are faced with a dilemma when defining the specification
+of a randomized algorithm $A$, as the algorithm itself is a distribution over a
+set of algorithms $\{A(\vv{c})\}_{\vv{c}\in \Omega^\infty}$. Without knowing
+the observed coin flip vector $\vv{c}$, the execution behaves unpredictably. We therefore
+define a deterministic sequential specification $\mathcal{H}(\vv{c})$ for each coin flip vector
+$\vv{c} \in \Omega^\infty$, so the sequential specification is a
+probability distribution on a set of sequential histories $\{\mathcal{H}(\vv{c})\}_{\vv{c}\in \Omega^\infty}$.
+
+% For randomized algorithm $A$, a schedule $\sigma$, we denote this skeleton history
+% by $H^?(A, \sigma)$, i.e., $[H(A, \sigma, \vv{c})]^?=H^?(A , \sigma)$
+% for any $\vv{c} \in \Omega^\infty$.
+
+% and a coin flip vector $\vv{c} \in \Omega^\infty$
+
+% Therefore, for a randomized algorithm $A$, a schedule $\sigma$, and
+% two coin flip vectors $\vv{c}, \vv{c}' \in \Omega^{\infty}$, 
+% $H^?(A, \sigma) \triangleq \left[H(A, \vv{c}, \sigma)\right]^?=\left[H(A, \vv{c}', \sigma)\right]^?$.
+% We denote this skeleton history by $H^?(A, \sigma)$.
+
+% In contrast to deterministic objects, where we defined a linearization for each history,
+% randomized algorithms require a common linearization for each skeleton history
+% that will hold true under all possible coin flip vectors.
+% We define
+% strong linearizability using the linearization of the skeleton history:
+% \begin{definition}[Strong linearizability]
+%   Consider a skeleton history $H=H^?(A, \sigma)$ of some
+%   randomized algorithm $A$ with schedule $\sigma$.
+%   $H$ is \emph{strongly linearizable} with respect to $\{\mathcal{H}(\vv{c})\}_{\vv{c} \in \Omega^\infty}$ if there exists a
+%   linearization $H'$ of $H$ such that for every coin flip vector $\vv{c}$ and read $R$
+%   that returns in $H$: $\text{ret}(R, \tau_{\mathcal{H}(\vv{c})}(H')) = \text{ret}(R, H(A, \vv{c}, \sigma))$.
+
+%   Algorithm $A$ is a \emph{strongly linearizable implementation} of a sequential specification distribution $\{\mathcal{H}(\vv{c})\}_{\vv{c} \in \Omega^\infty}$ if every
+%   skeleton history of a well-formed execution of $A$ is strongly linearizable with respect to $\{\mathcal{H}(\vv{c})\}_{\vv{c} \in \Omega^\infty}$.
+% \end{definition}
+% As linearizable objects are, in particular, IVL, we must strengthen IVL in a similar manner. We call this
+% stronger variant \emph{strong intermediate value linearizability (SIVL)}:
+
+A correctness criterion for randomized objects needs to capture the property that the distribution of
+a randomized algorithm's outcomes matches the distribution of behaviors allowed by the specification.
+Consider, e.g., some sequential skeleton history $H$ of an object defined by $\{\mathcal{H}(\vv{c})\}_{\vv{c}\in \Omega^\infty}$. Let Q be a query
+that returns in $H$, and assume that $Q$ has some probability $p$ to return a value $v$ in $\tau_{\mathcal{H}(\vv{c})}(H)$ for
+a randomly sampled $\vv{c}$. Intuitively, we would expect that if a randomized algorithm $A$ ``implements'' the specification
+$\{\mathcal{H}(\vv{c})\}_{\vv{c}\in \Omega^\infty}$, then $Q$ has a similar probability to return $v$ in sequential executions of $A$ with the same history,
+and to some extent also in concurrent executions of $A$ of which $H$ is a linearization. In other words, we
+would like the distribution of outcomes of $A$ to match the distribution of outcomes in $\{\mathcal{H}(\vv{c})\}_{\vv{c}\in \Omega^\infty}$.
+\inred{For example, consider a sequential specification that allows returns $0$ with probability $0.5$, and $1$ with probability $0.5$. For an
+algorithm to implement such an object, it is not enough for it to return only $0$ or $1$, but we expect $0$ to be returned with
+probability $0.5$, and $1$ to be returned with probability $0.5$.}
+
+
+We observe that in order to achieve this, it does not suffice to require that each history has an
+arbitrary linearization as we did for deterministic objects, because this might not preserve the
+desired distribution \inred{as is shown in~\cite{Wojciech}}. Instead, for randomized objects we require a common linearization for each
+skeleton history that will hold true under all possible coin flip vectors.
+\inred{In other words, the linearization is independent of the coin flip vector.}
+We therefore formally
+define IVL for randomized objects as follows:
+
+% \begin{definition}[IVL for randomized algorithms]
+
+%   Consider a skeleton history $H=H^?(A, \sigma)$ of some
+%   randomized algorithm $A$ with schedule $\sigma$.
+%   $H$ is \emph{IVL} with respect to $\{\mathcal{H}(\vv{c})\}_{\vv{c} \in \Omega^\infty}$ if there exist
+%   linearizations $H_1, H_2$ of $H$ such that for every coin flip vector $\vv{c}$ and some operation $o$
+%   that returns a value from some partially ordered set $(S, \leq)$ in $H$,
+%   \[\text{ret}(o, \tau_{\mathcal{H}(\vv{c})}(H_1)) \leq \text{ret}(o, H(A, \vv{c}, \sigma)) \leq \text{ret}(o, \tau_{\mathcal{H}(\vv{c})}(H_2)). \]
+
+%   Algorithm $A$ is an \emph{IVL implementation} of a sequential specification
+%   distribution $\{\mathcal{H}(\vv{c})\}_{\vv{c} \in \Omega^\infty}$ if every skeleton
+%   history of a well-formed execution of $A$ is IVL with
+%   respect to $\{\mathcal{H}(\vv{c})\}_{\vv{c} \in \Omega^\infty}$.
+%   \label{ivl-def:sivl}
+% \end{definition}
+
+\begin{definition}[IVL for randomized algorithms]
+  Consider a skeleton history $H=H^?(A, \sigma)$ of some
+  randomized algorithm $A$ with schedule $\sigma$.
+  $H$ is \emph{IVL} with respect to $\{\mathcal{H}(\vv{c})\}_{\vv{c} \in \Omega^\infty}$ if there exist
+  linearizations $H_1, H_2$ of $H$ such that for every coin flip vector $\vv{c}$ and query $Q$
+  that returns in $H$,
+  \[\text{ret}(Q, \tau_{\mathcal{H}(\vv{c})}(H_1)) \leq \text{ret}(Q, H(A, \vv{c}, \sigma)) \leq \text{ret}(Q, \tau_{\mathcal{H}(\vv{c})}(H_2)). \]
+
+  Algorithm $A$ is an \emph{IVL implementation} of a sequential specification
+  distribution $\{\mathcal{H}(\vv{c})\}_{\vv{c} \in \Omega^\infty}$ if every skeleton
+  history of a well-formed execution of $A$ is IVL with
+  respect to $\{\mathcal{H}(\vv{c})\}_{\vv{c} \in \Omega^\infty}$.
+  \label{ivl-def:sivl}
+\end{definition}
+
+% Note that the query $Q$ in Definition~\ref{ivl-def:sivl} is not necessarily ``correct''; rather,
+% it is bounded between two (possibly erroneous) results returned in linearizations.
+\inred{Since we require a common linearization of the skeleton histories under all coin flips vectors,
+the linearizations are a foriori independent of future coin flips. Hence, an adversary cannot affect
+the linearization based on observing the coin flip vector.}
+
+% Since we require a common linearization under all coin flip vectors, we do not need to
+% strengthen IVL for randomized settings in the manner that strong linearizability
+% strengthens linearizability. This is because the linearizations we consider are a fortiori independent of future coin flips.
+% \inred{In other words, the range of admissible behaviors is determined by variation in the interleaving steps, and not
+% by the variation  in coin flips. Definition~\ref{ivl-def:sivl} is both local and non-blocking, with a similar proof to Definition~\ref{ivl-def:ivl}.}
+
+% Note that a strongly linearizable object is trivially SIVL, as the linearization of $H$ plays the role of both $H_1$ and $H_2$.
+
+% We show that for a certain family of objects, the error of a sequential
+% object remains bounded in a concurrent SIVL implementation.
+% We first define the family, which we denote \emph{$\delta$-bounded} randomized
+% objects, as follows. Let $o$ be a sequential randomized object, and let $H^?$ be
+% some arising skeleton history from schedule $\sigma$.
+% Consider any read $R$ that completes in $H^?$. We say that $R$ is bounded if
+% there exist $v_1, v_2$ such that with probability
+% $\geq 1-\delta$, $R$ returns $v$ in $H^?_{\vv{c}}$ such that $v_1 \leq v \leq v_2$,
+% for some sampled $\vv{c} \in \Omega^{\infty}$. If this is true for every completed read $R$ in $H^?$,
+% then we say that $H^?$ is $\delta$-bounded. If every history arising for an
+% execution of $o$ is $\delta$-bounded, then we say that
+% $o$ is a \emph{$\delta$-bounded} randomized object.
+
+% We now show the following theorem:
+% \begin{theorem}
+%   Let $o$ be a sequential object, and let algorithm $A$ be an SIVL implementation
+%   of $o$. If $o$ is a $\delta$-bounded randomized object, then $A$ is a $2\delta$-bounded
+%   randomized object.
+%   \label{ivl-thm:SIVL-bound}
+% \end{theorem}
+% \begin{proof}
+%   Let $o$ be a $\delta$-bounded randomized sequential object, and let $A$ be an SIVL implementation
+%   of $o$. Let $\vv{c}$ be a coin flip vector, and let $\sigma$ be a schedule. Consider $H(\vv{c}, \sigma)$,
+%   the concurrent history arising from an execution of $A$. Consider some operation $R$ that returns some value in $H(\vv{c}, \sigma)$.
+
+%   Consider the skeleton history $H^?$ of $H(\vv{c}, \sigma)$. As $A$ is SIVL there exist linearizations
+%   $H_1^?, H_2^?$ of $H^?$, such that
+%   $\text{ret}(R, {H_1^?}(\vv{c})) \leq \text{ret}(R, {H^?}(\vv{c})) \leq \text{ret}(R, {H_2^?}(\vv{c}))$.
+%   Note that $H_i^?(\vv{c})$ is a sequential history of $A$. As such, we can execute the operations on object
+%   $o$ in the same order and observing the some coin flip vector $\vv{c}$ and arrive at history $H'$
+%   such that $H'=H_i^?(\vv{c})$ for $i \in \{1,2\}$. As $o$ is a $\delta$-bounded randomized object, there exit values
+%   $v_i^1, v_i^2$ such that $v_i^1 \leq \text{ret}(H_i^?(\vv{c})) \leq v_i^2$ with probability $\geq 1-\delta$, for $i \in \{1,2\}$.
+%   Therefore, $v^1 \leq v_1^1$ and with probability $\leq \delta$: $v^2 \geq v_2^2$.
+%   As $A$ is an SIVL implementation of $o$, there exist linearizations $H_1,H_2$,
+%   and values $v^1,v^2$ such that $v^1 \leq v \leq v^2$. As $H_1$ and $H_2$ are sequential
+%   histories, then there exists $v_1^1,v_2^1,v_1^2,v_2^2$ such that with probability
+%   $\geq 1 - \delta$: $v_1^1 \leq v^1 \leq v_2^1$ and with probability
+%   $\geq 1 - \delta$: $v_1^2 \leq v^2 \leq v_2^2$. Therefore, with probability $\leq \delta$:
+%   $\text{ret}(H_1^?(\vv{c})) \leq v_1^1$ and with probability $\leq \delta$: $\text{ret}(H_2^?(\vv{c})) \geq v_2^2$.
+
+%   Therefore,
+%   with probability $\geq 1 - 2 \delta$ then both $\text{ret}(H_1^?(\vv{c})) \geq v_1^1$ and $\text{ret}(H_2^?(\vv{c})) \leq v_2^2$,
+%   and therefore with probability $\geq 1 - 2 \delta$ then
+%   $v_1^1 \leq \text{ret}(H_1^?(\vv{c})) \leq \text{ret}(H^?(\vv{c})) \leq \text{ret}(H_2^?(\vv{c})) \leq v_2^2$.
+%   Meaning, choosing $v_1 = v_1^1$ and $v_2 = v_2^2$ proves the theorem.
+% \end{proof}
+
+
+
+% The importance we see in defining correctness criteria for randomized objects
+% is twofold: the first is the ease of concurrent error relaxation and the
+% second is the implementation flexibility it provides.
+% \inred{ARIK: I'm trying to work out how to say that the error analysis of
+% a strongly linearizable object is the same as an atomic one. I'm not sure how to
+% say this.}
+
+% Here too the sequential
+% analysis carries over to the concurrent
+% setting, with an additional relaxation error, i.e., the error that is added
+% due to overtaking a bounded number of operations. Like strong linearizability, the analysis
+% is relative to a sequential specification which is only applicable to a deterministic
+% execution. While the flexibility is larger than that of strong linearizability,
+% it is still bounded by a factor of $r$.
+
+%  This framework does not
+% leverage existing literature of the error in the sequential setting, which we
+% wish to leverage.
+
+\subsection{\texorpdfstring{$r$}{r}-relaxed IVL}
+\label{ivl-ssec:relaxed-cm}
+
+Henzinger et al. define $r$-relaxed semantics~\cite{Henzinger}.
+Intuitively, each operation on the relaxed object is assigned a \emph{cost}. An
+$r$-relaxation allows operations whose costs do not exceed $r$. Rinberg et al.~\cite{rinberg2019fast}
+define the cost of some operation $o$ to be the number of operations that precede it in the
+concurrent history, but do not precede it in the sequential one.
+\inred{Paraphrasing} the definition of the $r$-relaxed
+specification for some sequential specification $\mathcal{H}$ from Rinberg et al.~\cite{rinberg2019fast}:
+\begin{definition}[r-relaxation]
+    A sequential history $H$ is an \emph{$r$-relaxation} of a sequential history $H'$
+    if $H$ is comprised of all the invocations in $H'$ and their responses,
+    and each invocation in $H$ is preceded by all but at most $r$ of the invocations that precede the 
+    same invocation in $H'$. The \emph{$r$-relaxation} of $\mathcal{H}$ is the set of histories
+    that have r-relaxations in $\mathcal{H}$:
+    
+    $\mathcal{H}^r \triangleq $ $\{H'|\exists H\in$$\mathcal{H}$ s.t. $H$ is an $r$-relaxation of $H'\}$.
+    \label{ivl-def:r-relaxtion}
+\end{definition}
+We can plug Definition~\ref{ivl-def:r-relaxtion} into Definition~\ref{ivl-def:sivl} instead
+of the sequential specification there to get a specification for $r$-relaxed IVL objects.
+For completeness, we define $r$-relaxed IVL:
+\begin{definition}[$r$-Relaxed IVL]
+  Consider a skeleton history $H=H^?(A, \sigma)$ of some
+  randomized algorithm $A$ with schedule $\sigma$.
+  $H$ is $r$-relaxed \emph{IVL} with respect to $\{\mathcal{H}^r(\vv{c})\}_{\vv{c} \in \Omega^\infty}$ if there exist
+  linearizations $H_1, H_2$ of $H$ such that for every coin flip vector $\vv{c}$ and query $Q$
+  that returns in $H$,
+  \[\text{ret}(Q, \tau_{\mathcal{H}^r(\vv{c})}(H_1)) \leq \text{ret}(Q, H(A, \vv{c}, \sigma)) \leq \text{ret}(Q, \tau_{\mathcal{H}^r(\vv{c})}(H_2)). \]
+
+  Algorithm $A$ is an $r$-relaxed \emph{IVL implementation} of a sequential specification
+  distribution $\{\mathcal{H}(\vv{c})\}_{\vv{c} \in \Omega^\infty}$ if every skeleton
+  history of a well-formed execution of $A$ is IVL with
+  respect to $\{\mathcal{H}^r(\vv{c})\}_{\vv{c} \in \Omega^\infty}$.
+  \label{ivl-def:relaxed-sivl}
+\end{definition}
+\inred{As Definition~\ref{ivl-def:relaxed-sivl} is IVL with respect to an r-relaxed specification, it is
+both local and non-blocking.} In Section~\ref{ivl-ssec:countMin}, we show that this allows us to create more NUMA-friendly objects.
+
+
+
+\subsection{Relationship to other relaxations}
+\label{ivl-ssec:comparisons}
+
+In spirit, IVL resembles the \emph{regularity} correctness condition for
+single-writer registers~\cite{lamport1986interprocess}, where a query must return
+either a value written by a concurrent write or the last value written
+by a write that completed before the query began. Stylianopoulos  
+et al.~\cite{stylianopoulos2020delegation} adopt a similar condition for data sketches, which they
+informally describe as follows: ``a query takes into account all completed
+insert operations and possibly a subset of the overlapping ones.''
+If the object's estimated quantity (return value) is monotonically increasing
+throughout every execution, then IVL essentially captures this condition,
+while also allowing intermediate steps of a single update to be observed.
+But this is not the case in general. Consider, for example, an
+object supporting increment and decrement, and a query that occurs concurrently
+with an increment and an ensuing decrement. If the query takes only the decrement
+into account (and not the increment), it returns a value that is smaller than all legal return values
+that may be returned in linearizations, which violates IVL. Our interval-based
+formalization is instrumental to ensuring that a concurrent IVL implementation
+preserves the probabilistic error bounds of the respective sequential sketch, which we prove in the next section.
+
+Another example of an object specified in the spirit of IVL is Lamport's monotonic
+clock~\cite{lamport1990concurrent}, where a read is required to return a value bounded between the clock's
+values at the beginning and end of the read’s interval.
+
+Previous work on set-linearizability~\cite{neiger1994set} and
+interval-linearizability~\cite{castaneda2018unifying} has also relaxed linearizability,
+allowing a larger set of return values in the presence of overlapping operations. The set of possible return
+values, however, must be specified in advance by a given state machine; operations' effects
+on one another must be predefined.
+In fact, interval-linearizability could be used to define IVL on a per-object basis, by defining
+a nondeterministic interval-sequential object in which a read operation can return any value in
+the interval defined by the update operations that are concurrent with it. In
+contrast, \inred{when considering quantitative objects,} IVL is generic and does not require
+additional object-specific definitions; it provides an intuitive quantitative bound
+on possible return values.
+
+Henzinger et al.~\cite{Henzinger} define
+the quantitative relaxation framework, which
+allows executions to differ from the sequential specification up to a bounded cost function.
+We use this framework when defining relaxed IVL.
+Alistarh et al.
+expand upon this and define \emph{distributional linearizability}~\cite{alistarh2018distributionally},
+which requires a distribution over the internal
+states of the object for its error analysis.
+Rinberg et al. consider strongly linearizable $r$-relaxed semantics for randomized objects~\cite{rinberg2019fast}.
+IVL differs from these definitions in two points: First, a sequential history of an IVL object
+must adhere to the sequential specification, whereas in these
+relaxations even a sequential history may diverge from the specification. The second is that these relaxations
+are measured with respect to a single linearization. We, instead, bound
+the return value between two legal linearizations. The latter is the key to preserving the
+error bounds of sequential objects, as we next show.

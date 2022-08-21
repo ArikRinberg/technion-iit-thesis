@@ -1,0 +1,41 @@
+In this section we define an algorithm property under which the ``hogwild'' parallelism
+(i.e., allowing all threads to work concurrently with no synchronization) produces as IVL
+algorithm. We note that a quantitative object is essentially a function on its memory
+state.
+
+We denote the underlying objects as $\mathcal{X} \triangleq x_1,x_2,\dots, x_k$ for some $k$. An \textsc{update} operation
+updates some of subset of objects in $\mathcal{X}$, and \textsc{query} applies some function $f$ and returns
+$f(\mathcal{X}) \triangleq f(x_1,x_2,\dots,x_k)$. We define $x_i(t)$ as the state of the object $i$ at time $t$,
+and denote $\mathcal{X}(t)$ as $x_1(t), x_2(t), \dots, x_k(t)$.
+Finally, we can define a \emph{monotonically increasing} algorithm:
+\begin{definition}
+    A quantitative algorithm $A$ is \emph{monotonically increasing} if:
+    \begin{itemize}
+        \item For every index $1 \leq i \leq k$: $x_i(t) \leq x_i(t')$ for all times $t \leq t'$ or $x_i(t) \geq x_i(t')$for all times $t \leq t'$; and
+        \item $f(\mathcal{X}(t)) \leq f(\mathcal{X}(t'))$ for all times $t \leq t'$.
+    \end{itemize}
+\end{definition}
+
+We can similarly define a \emph{monotonically decreasing} algorithm. We can now define a \emph{monotonic}
+algorithm as one which is either monotonically increasing or monotonically decreasing.
+
+An important distinction to be made is that we refer to times and not to histories of some length. This is so
+we capture intermediate states as well. To illustrate the importance of this distinction, consider an increment
+object. Trivially, it is an object in which the histories are monotonically increasing. However, it is not necessarily
+a monotonic object under our definition. Consider an implementation consisting of a single register, starting at
+$0$ and increasing by one every \textsc{update}. The \textsc{update} implementation can consist of two subsequent
+operations: (1) write $-1$ to the register, and (2) write $x+1$ where $x$ is the value before the \textsc{update}. As
+there is a time between (1) and (2), the implementation isn't monotonic.
+
+We can now formalize the following theorem:
+\begin{theorem}
+    Consider some algorithm $A$, and consider its straightforward parallelism $A_c$. If $A$ is monotonic,
+    then $A_c$ is IVL.
+\end{theorem}
+
+An important subfamily of monotonic algorithms are linear sketches. Linear sketches involve sampling a
+matrix $A$ from some distribution $\pi$ over linear maps of size $n \times r$. A vector $x$ of size $n$ is
+presented to the algorithm, which maintains a sketch $Ax$. This provides a concise representation of $x$ which
+can be queried for various approximate answers. In an online insertion-only stream, an update $(i, \delta_t)$
+causes the change $x_i \gets x_i + \delta_t$, and $\delta_t \geq 0$. If, furthermore, all elements in $A$ are
+positive, the resulting sketching algorithm is monotonic.

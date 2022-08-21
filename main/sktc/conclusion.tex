@@ -1,0 +1,20 @@
+In this paper, we presented the problem of merging data from multiple measurement points to one centralized server, described a distributed traffic-aware sketching scheme, and applied it to three unique sketches. 
+We presented the CM-SKTC sketch as a simple, yet efficient method for compressing the CM sketch to any desired size, then used this method to generate \emph{TA-CM}, a new scheme for flow-size measurements that 
+%performs as well as previously presented methods 
+provides high accuracy 
+and  decreases the total summaries size sent to the centralized server by considering the traffic of each node. 
+This method is important in today's network design because when the traffic congestion in the network is high the need to successfully measure the network load is higher. In such situations, the extra load created by sending the summaries can worsen network congestion. 
+
+Moreover, we generalized this approach for cardinality estimation and introduced new traffic-aware designs of the KMV sketch as well as of the HLL sketch. They both send fewer values while retaining high accuracy cardinality estimation. 
+Finally, we analyzed these sketches under multiple network settings and examined the trade-off between the accuracy and the size of summaries.
+
+Several directions can be the focus in future work.  
+%There are some topics we did not address and can be focused on in future work. 
+A straightforward extension is developing compression algorithms for additional kinds of sketches %; there are many other types of sketches that 
+allowing different measurement tasks (e.g., Quantiles for rank estimation~\cite{agarwal2013mergeable}).  
+%Likewise, calculating the TA-KMV compression ratios only takes into account the estimated cardinality at ingestion nodes. It would be interesting to suggest other heuristics for deciding how many (and which) elements to send as part of the summary. For example, we can consider storing the element frequencies alongside the hashes -- as the frequency rises the less likely a node needs to send the specific hash as another node probably has the same element and will send it.
+%Moreover, each of the presented compression schemes refers to a sketch supporting a single task such as flow size estimation or cardinality estimation. It is interesting to generalize the approach towards generic sketches such as UnivMon~\cite{liu2016one} and 
+%NitroSketch~\cite{NitroSketch} supporting multiple tasks. This might involve definitions for ideal resize factors that refer jointly to multiple tasks, observing different types of errors with potential heterogeneous balance among the required size of summaries for the various nodes.
+%Another interesting addition to this paper can be studying the impact of interleaving the ingestion nodes such that streams observed by the nodes might not be disjoint. This problem raises multiple questions related to duplicate handling of the system which we currently ignore by assuming that the ingestion nodes are separate. 
+Likewise, we wish to design further compression of sketches 
+by leveraging existing generic compression techniques such as Huffman codes, LZ77 or gzip~\cite{huffman1952method, ziv1977universal, deutsch1996gzip}. 

@@ -1,0 +1,28 @@
+\begin{abstract}
+    
+Big data processing systems often employ batched updates and data sketches to estimate certain properties of large data. For example, a \emph{CountMin sketch} approximates the frequencies at which elements occur in a data stream, and a \emph{batched counter} counts events in batches. This paper focuses on correctness criteria for concurrent implementations of such objects. Specifically, we consider \emph{quantitative} objects, whose return values are from an ordered domain, with a particular emphasis on \emph{$(\epsilon,\delta)$-bounded} objects that estimate a numerical quantity with an error of at most $\epsilon$ with probability at least $1 - \delta$.
+
+The de facto correctness criterion for concurrent objects is linearizability. Intuitively, under linearizability, when a read overlaps an update, it must return the object's value either before the update or after it. Consider, for example, a single batched increment operation that counts three new events, bumping a batched counter's value from $7$ to $10$. In a linearizable implementation of the counter, a read overlapping this update must return either $7$ or $10$. We observe, however, that in typical use cases, any \emph{intermediate} value between $7$ and $10$ would also be acceptable. To capture this additional degree of freedom, we propose \emph{Intermediate Value Linearizability (IVL)}, a new correctness criterion that relaxes linearizability to allow returning intermediate values, for instance $8$ in the example above. Roughly speaking, IVL allows reads to return any value that is bounded between two return values that are legal under linearizability. 
+
+A key feature of IVL is that we can prove that concurrent IVL implementations of
+$(\epsilon,\delta)$-bounded objects are themselves $(\epsilon,\delta)$-bounded.
+To illustrate the power of this result, we give a straightforward
+and efficient concurrent implementation of an $(\epsilon, \delta)$-bounded
+CountMin sketch, which is IVL (albeit not linearizable). 
+
+We present four examples for IVL objects, each showcasing a different
+way of using IVL. The first is a simple wait-free IVL batched counter, with $O(1)$ step complexity
+for update. The next considers an $(\epsilon, \delta)$-bounded CountMin sketch, and further
+shows how to relax IVL using \inred{the notion of} $r$-relaxation. Our third example is a non-atomic iterator
+over a data structure. In this example, we augment the data structure with an \emph{auxiliary history variable}
+state that includes ``tombstones'' for items deleted from the data structure. Here, IVL
+semantics are required at the augmented level. Finally, using a \emph{priority queue},
+we show that some objects require IVL to be paired with other correctness criteria;
+indeed a natural correctness notion for a concurrent priority queue is IVL coupled
+with sequential consistency.
+
+Lastly, we show that IVL allows for inherently cheaper implementations
+than linearizable ones. In particular, we show a lower bound of $\Omega(n)$
+on the step complexity of the update operation of any wait-free linearizable
+batched counter from single-writer multi-reader registers, which is more expensive than our $O(1)$ IVL implementation.
+\end{abstract}

@@ -1,0 +1,122 @@
+\section{Introduction}
+\label{ivl-sec:intro}
+
+\subsection{Motivation}
+\label{ivl-ssec:motivation}
+
+Nowadays, big data analytics systems must process data streams at a high rate due to the speed of incoming data.
+Data sketching algorithms, or \emph{sketches} for short~\cite{cormode2012synopses}, are
+an indispensable tool for such high-speed computations. Sketches typically estimate some function
+of a large stream, for example, the frequency of certain items~\cite{CountMin}, how many unique items
+have appeared~\cite{datar2002comparing, flajolet1983probabilistic, gibbons2001estimating},
+or the top-$k$ most common items~\cite{metwally2005efficient}.
+They are supported by many data analytics platforms such as PowerDrill~\cite{heule2013hyperloglog},
+Druid~\cite{druid}, Hillview~\cite{hillview}, and Presto~\cite{presto} as well as standalone toolkits~\cite{apache-datasketches}.
+
+Sketches are quantitative objects that support {\sc update}
+and {\sc query} operations, where the return value of a {\sc query}
+is from an ordered set. They are essentially succinct (sublinear)
+summaries of a data stream. For example, a sketch might estimate the number of packets originating
+from any IP address, without storing a record for every possible address.
+Typical sketches are \emph{probably approximately correct (PAC)}, estimating some aggregate
+quantity with an error of at most $\epsilon$ with probability at least $1-\delta$ for some
+parameters $\epsilon$ and $\delta$. We say that such sketches are \emph{$(\epsilon,\delta)$-bounded}.
+
+
+% Sketches estimate some quantity (or quantities) with probabilistic guarantees,
+% and are \emph{probably approximately correct (PAC)}.
+% Specifically, an \emph{$(\epsilon, \delta)$-bounded} sketch's response to a query is
+% within $\epsilon$ of the correct value with probability at
+% least $1-\delta$.
+
+The ever increasing rates of incoming data create a strong demand for parallel
+stream processing~\cite{cormode2011algorithms,heule2013hyperloglog}.
+In order to allow queries to return fresh results in real-time without
+hampering data ingestion, it is paramount to support queries concurrently with updates~\cite{rinberg2019fast,stylianopoulos2020delegation}.
+But parallelizing sketches raises some important questions, for instance: \textit{What are the semantics of overlapping operations in a concurrent sketch?},
+\textit{How can we prove error guarantees for such a sketch?}, and, in particular,
+\textit{Can we reuse the myriad of clever analyses of existing sketches' error bounds in parallel settings without opening the black box?}
+In this paper we address these questions.
+% As sketching algorithms are PAC, a concurrent sketch requires specifying 
+
+% Sketches are very important (like Rinberg et al.) and are very popular. 
+% Sketches are quantitative PAC objects, which means (e,d) bounded - with an example\
+% Big data means parallelization, with concurrent updates queries. (Search for citations in Rinberg et al.)
+% What is the semantics of this object? Can we parallelize an analyzed sketch and parallelize it leveraging the error analysis? We are these two questions.
+
+\subsection{Our contributions}
+\label{ivl-ssec:contribution}
+
+The most common correctness condition for concurrent objects is linearizability. Roughly speaking,
+it requires each parallel execution to have a \emph{linearization}, which is a sequential
+execution of the object that ``looks like'' the parallel one. (See Section~\ref{ivl-sec:preliminaries} for a formal definition.)
+But sometimes linearizability is too restrictive leading to a high implementation cost, \inred{as is shown in this 
+paper and motivates other works on relaxing linearizability CITE?.}
+
+In Section~\ref{ivl-sec:ivl}, we propose \emph{Intermediate Value Linearizability (IVL)},
+a new correctness criterion for quantitative objects.
+Intuitively, the return value of an operation
+of an IVL object is bounded between two legal values that can be returned in linearizations.
+The motivation for allowing this is that if the system designer is happy with
+either of the legal values, then the intermediate value should also be fine.
+For example, consider a system where processes
+count events, and a monitoring process detects when the number of events passes a threshold.
+The monitor constantly reads a shared counter, which other processes increment in batches.
+If an operation increments the counter from $4$ to $7$
+batching three events, IVL allows a concurrent read by the monitoring
+process to return $6$, although there is no linearization
+in which the counter holds $6$. We formally define IVL and prove that this property is
+\emph{local}, meaning that a history composed of IVL objects is itself IVL.
+This allows reasoning about single objects rather than about the system as a whole. We formulate
+IVL first for deterministic non-randomized objects, and then extend it to capture randomized ones.
+
+Next, we consider $(\epsilon,\delta)$-bounded algorithms like data sketches.
+Existing (sequential) algorithms have sequential error analyses which we wish to leverage
+for the concurrent case. In Section~\ref{ivl-sec:bounded-objects} we formally define $(\epsilon, \delta)$-bounded
+objects, including concurrent ones. We then prove a key theorem about IVL, stating that an IVL
+implementation of a sequential $(\epsilon, \delta)$-bounded object
+is itself $(\epsilon, \delta)$-bounded. The importance of this theorem is that it \emph{provides a generic way to leverage
+the vast literature on sequential $(\epsilon, \delta)$-bounded
+sketches~\cite{morris1978counting, flajolet1985approximate, cichon2011approximate, liu2016one, CountMin, agarwal2013mergeable}
+in concurrent implementations}.
+
+In Section~\ref{ivl-sec:examples}, we present four examples of IVL objects, each showing
+a different way in which IVL can be used. We first present a wait-free IVL implementation of a batched counter from
+single-writer-multi-reader (SWMR) registers with $O(1)$ step complexity for 
+{\sc update} operations (we will later show that linearizable implementations are inherently more costly).
+We then showcase an $(\epsilon, \delta)$-bounded object, via the example of a concurrent \emph{CountMin (CM)} sketch~\cite{CountMin},
+which estimates the frequencies of items in a data stream. We prove that a straightforward
+parallelization of this sketch is IVL. By the aforementioned theorem, we deduce that the concurrent sketch adheres
+to the error guarantees of the original sequential one, without having to ``open'' the analysis. We note
+that this parallelization is \emph{not} linearizable. We further show that an $r$-relaxation of the IVL CM sketch --
+analogous to $r$-relaxations of linearizability~\cite{Henzinger} -- allows for efficient
+concurrent implementations which preserve the sketch's error up to an additive constant.
+
+We then show that data structure iterators returning non-atomic snapshots~\cite{arbel2018harnessing, meir2020oak}
+can be captured via IVL. To this end, we augment their specification and implementation with
+an \emph{auxiliary history variable}, holding ``tombstones'' for deleted items.
+Note that we add the auxiliary variable both at the concrete level
+(the data structure is augmented to track its removals in an auxiliary variable holding tombstones)
+and at the abstract level (the iterator in the augmented sequential specification returns
+a set including tombstones). The algorithm augmented with the auxiliary
+variable is an IVL implementation of the augmented sequential specification.
+We show that this specification captures the standard notion of
+non-atomic iterators~\cite{arbel2018harnessing, meir2020oak}. Our last example illustrates
+that in some cases, IVL needs to be paired with additional correctness criteria, and
+discuss the example of an IVL and sequentially consistent~\cite{scheurich1987correct} priority queue.
+
+% As an example, in Section~\ref{ivl-ssec:countMin}, we present a concurrent CountMin sketch~\cite{CountMin},
+% which estimates the frequencies of items in a data stream. We prove that a straightforward
+% parallelization of this sketch is IVL. By the aforementioned theorem, we deduce that the concurrent sketch adheres
+% to the error guarantees of the original sequential one, without having to ``open'' the analysis. We note
+% that this parallelization is \emph{not} linearizable.
+
+Finally, we show that IVL is sometimes inherently cheaper than linearizability. We illustrate
+this in Section~\ref{ivl-ssec:lower-bound} via the example of a \emph{batched counter}.
+We prove a lower bound of $\Omega(n)$ step
+complexity for the {\sc update} operation of any wait-free
+linearizable implementation, using only SWMR registers. As our IVL implementation
+has a step complexity of $O(1)$ for {\sc update} operations,
+this exemplifies that there is an inherent and unavoidable
+cost when implementing linearizable algorithms, which can be circumvented
+by implementing IVL algorithms instead.

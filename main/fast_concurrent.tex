@@ -1,0 +1,36 @@
+\chapter{Fast Concurrent Data Sketches}
+\label{chap:fast-concurrent-data-sketches}
+
+Data sketches are approximate succinct summaries of long data streams. They are widely used
+for processing massive amounts of data and answering statistical queries about it.
+Existing libraries producing sketches are very fast, but do not allow parallelism for 
+creating sketches using multiple threads or querying them while
+they are being built. In this chapter, we present a generic approach to parallelizing data sketches efficiently and
+allowing them to be queried in real time,
+while bounding the error that such parallelism introduces. Utilizing relaxed semantics and 
+the notion of strong linearizability we prove our algorithm's correctness and analyze the 
+error it induces in some specific sketches.
+Our implementation achieves high scalability while keeping the error small. We have contributed
+one of our concurrent sketches to the open-source data sketches library.
+
+\input{main/fast-concurrent/intro}
+
+\input{main/fast-concurrent/model.tex}
+
+\input{main/fast-concurrent/background.tex}
+
+\input{main/fast-concurrent/relaxed.tex}
+
+\input{main/fast-concurrent/algorithm.tex}
+
+\input{main/fast-concurrent/proof.tex}
+
+\input{main/fast-concurrent/errorBounds.tex}
+
+\input{main/fast-concurrent/evaluation.tex}
+
+%\input{sections/appendixEvaluation.tex}
+%\input{sections/Evaluation.tex}
+
+
+\input{main/fast-concurrent/discussion.tex}

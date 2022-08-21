@@ -1,0 +1,91 @@
+\subsection{Non-atomic iterators}
+\label{ivl-ssec:sets-and-iterators}
+
+While until now we focused on numerical objects, the idea behind IVL can be
+expanded to include other types of objects as well. For example, iterators
+in map and set data structures (like skiplists and search trees) typically return a
+non-atomic scan of the set of keys -- or items -- in the data structure~\cite{arbel2018harnessing, meir2020oak}.
+We show that the semantics of such scan operations are naturally captured using IVL.
+Consider a data structure supporting three operations, (1) \textsc{insert}, (2) \textsc{delete},
+and (3) \textsc{scan}.
+The sequential specification $\mathcal{H}_{MAP}$ is straightforward, a \textsc{scan}
+returns all elements that were inserted before it and were not deleted before it.
+
+The concurrent semantics are typically defined as follows~\cite{arbel2018harnessing, meir2020oak}:
+\begin{definition}[Non-atomic \textsc{Scan} operation semantics]
+Consider a scan operation, returning some set $S$. Let $K$ be the elements that have
+been inserted prior to the scan's invocation and have not been deleted before the scan. Let
+$I$ be the elements being inserted concurrently to the scan, and let $D$ be the set of elements
+that are removed concurrently to the scan. Then $K \setminus D \subseteq S \subseteq K \cup I$.
+\label{ivl-def:scan}
+\end{definition}
+
+This definition resembles IVL with the partial order of set containment. However, IVL also
+adheres to program order. So if a thread adds element $a$, then removes it, then 
+adds element $b$, an IVL scan result cannot contain both $a$ and $b$, which is allowed
+by Definition~\ref{ivl-def:scan}.
+
+We can, nevertheless, use IVL to capture the correctness semantics of such non-atomic
+iterators as specified by Definition~\ref{ivl-def:scan}.
+To this end, we add an auxiliary history variable both at the concrete level
+(the data structure is augmented to track its removals in an auxiliary history variable holding
+tombstones) and at the abstract level (the \textsc{scan} in the augmented sequential
+specification returns a set including tombstones).
+The algorithm augmented
+with the auxiliary variable is an IVL implementation of the augmented sequential specification.  
+The \textsc{insert}($a$) operation inserts $a$ into the auxiliary variable.
+The \textsc{delete}($a$) operation inserts a tombstone for $a$, denoted $-a$, into the auxiliary variable. The
+concrete return value is defined via a function $f$ that returns the
+set of elements that are included and do not have tombstones in the
+auxiliary variable, e.g., $f(\{a,-a,b\}) = \{b\}$.
+
+Formally, let $\mathcal{V}$ be the set of all possible elements, and denote the possible
+tombstones as $\mathcal{V}^-=\{-v| v \in \mathcal{V}\}$. The auxiliary variable
+is some $S \in 2^{\mathcal{V} \cup \mathcal{V}^-}$. We define $f : 2^{\mathcal{V} \cup \mathcal{V}^-} \mapsto 2^{\mathcal{V}}$  as:
+$f(S) = \{v| v \in S \wedge -v \notin S\}$.
+
+Given the sequential specification $\mathcal{H}_{MAP}$ defined above, denote $\mathcal{H}_{T-MAP}$ as
+the augmented object. The sequential specification of a \textsc{scan} operation is
+also straightforward: a \textsc{scan} returns a set in $2^{\mathcal{V} \cup \mathcal{V}^-}$
+consisting of all elements that were
+inserted before it, and tombstones for all elements deleted before it.
+
+We prove that IVL semantics with the auxiliary variable is equivalent to Definition~\ref{ivl-def:scan}:
+\begin{lemma}   
+Consider a history $H$ of a concurrent object implementing $\mathcal{H}_{MAP}$ and \inred{some} scan of it returning a set
+of items $S \in 2^{\mathcal{V}}$. Denote by $\mathcal{H}_{T-MAP}$ the object augmented with
+the auxiliary history variable tracking tombstones.
+\inred{Then $\exists S' \in 2^{\mathcal{V} \cup \mathcal{V}^-}$ such that
+returning $H$ is IVL with respect to $\mathcal{H}_{T-MAP}$ and $f(S') = S$.}
+\end{lemma}
+\begin{proof}
+\inred{Let $H$ be a history of some concurrent object implementing $\mathcal{H}_{MAP}$},
+and let $S$ be the result
+of some non-atomic scan operation in $H$. Let $K$,$I$, and $D$ be as defined by
+Definition~\ref{ivl-def:scan}.
+
+$S$ satisfies Definition~\ref{ivl-def:scan}\inred{, as the object implements $\mathcal{H}_{MAP}$}. We show that $\exists S'$ such that $S'$
+is IVL with respect to $\mathcal{H}_{T-MAP}$ and $f(S')=S$.
+
+Let $H_1$ be a linearization of $H^?$ where the scan is linearized before all concurrent operations,
+and let $H_2$ be a linearization of $H^?$ where the scan is linearized after all concurrent operations.
+Let ${S'}_i \in 2^{\mathcal{V} \cup \mathcal{V}^-} $ be the return value of the scan in $\tau_\mathcal{H}(H_i)$,
+for $i=1,2$. Let $K'$ be the set of all insertions and deletions before the scan in $H_1$,
+then, by construction, $S_1' = K'$ and $S_2' = K' \cup {I \cup D^-}$. Note that $f(K')=K$.
+
+We construct $S'$ as $S_1' \cup I' \cup D'^-$ as follows: $I' = S \cap I$, and $D' = D \setminus S$.
+I.e., $I'$ is all inserted elements that are observed by $S$, and $D'$ are all deleted
+elements not observed by $S$ -- meaning elements that are deleted concurrently to the scan
+and not observed by it. By construction
+\[ S_1' \subseteq S' = S_1' \cup I' \cup {D'}^- \subseteq S_1' \cup I \cup D^- = S_2', \]
+so returning $S'$ is IVL with respect to $\mathcal{H}_{T-MAP}$.
+
+Furthermore, by construction, $S'=K' \cup (S \cap I) \cup (D \setminus S)^-$, so
+$f(S')=K \cup (S \cap I) \setminus (D \setminus S)$. By Definition~\ref{ivl-def:scan}
+$K \setminus D \subseteq S \subseteq K \cup I$, we get that
+$K \setminus (D \setminus S) \subseteq S \subseteq K \cup (I \cap S)$, and $f(S')=S$, as needed.
+\end{proof}
+
+\inred{We believe that instead of giving a long definition of the SCAN operation as is currently
+done~\cite{arbel2018harnessing, meir2020oak}, IVL captures the semantics of such operations accurately
+and succinctly.}

@@ -346,6 +346,8 @@
  \makeacknowledgementsEnglish
  \cleardoublepage
 
+
+
  % Workaround: The first page of the table of contents is getting numbered,
  % although it's not supposed to be (pagestyle empty); so let's at least
  % change the numbering style so that we don't actually get the number...
@@ -376,7 +378,7 @@
   url=true,
   maxbibnames=99, % Effectively ensure all authors are listed
   language=american, % ... English
-  style=trad-alpha,
+%   style=trad-alpha,
   maxalphanames=4 % Only use first 4 names for an initials key
   ]{biblatex}
 \setcounter{biburllcpenalty}{7000}
@@ -584,14 +586,62 @@
 
 \newcommand{\makeacknowledgementsEnglish}{%
 
-  \noindent \iitthesis@supervisionEnglish
+\topskip0pt
+\vspace*{\fill}
+\begin{center}
+    \iitthesis@supervisionEnglish
+    
+    \hfill \break
+    
+    \iitthesis@financialAcknowledgementEnglish
+\end{center}
+\vspace*{\fill}
 
-  \ifx\iitthesis@publicationInfoEnglish\@empty
-  \else
-    \medskip
-    \noindent \iitthesis@publicationInfoEnglish
+\cleardoublepage 
 
-  \fi
+\topskip0pt
+\vspace*{\fill}
+\begin{center}
+    To my loving wife, Noa,
+    and wonderful children Rephael and Nesya.
+\end{center}
+\vspace*{\fill}
+  
+
+ \cleardoublepage
+ \chapter*{List of Publications}
+ 
+ Some results in this thesis have been published as articles by the author and research collaborators in conferences and journals during the course of the author's doctoral research period, the most up-to-date versions of which being:
+ \begin{itemize}
+     \item[1.] Arik Rinberg, Alexander Spiegelman, Edward Bortnikov, Eshcar Hillel, Idit Keidar, Lee Rhodes, and Hadar Serviansky, ``Fast concurrent data sketches'', \textit{ACM Transactions on Parallel Computing (TOPC) 9.2 (2022), pp. 1–35}.
+     
+     \item[2.] Arik Rinberg and Idit Keidar, ``Intermediate Value Linearizability: A Quantitative Correctness Criterion'', \textit{34th International Symposium on Distributed Computing 2020 (DISC'20)}.
+     
+     \item[3.] Dor Harris$^\dagger$, Arik Rinberg$^\dagger$, and Ori Rottenstreich, ``Compressing Distributed Network Sketches with Traffic-Aware Summaries'', \textit{IEEE Transactions on Network and Service Management (2022)}, $^\dagger$ - equal contributors.
+ \end{itemize}
+
+The author and research collaborators have also published papers that have not contributed to this thesis during the course of the author's doctoral research period, the most up-to-date versions of which being:
+ 
+  \begin{itemize}
+     \item[4.] Alexander Spiegelman, Arik Rinberg, and Dahlia Malkhi, ``ACE: Abstract Consensus Encapsulation for Liveness Boosting of State Machine Replication'', \textit{24th International Conference on Principles of Distributed Systems 2021 (OPODIS'21)}.
+     
+     \item[5.] Arik Rinberg, Tomer Solomon, Guy Khazma, Gal Lushi, Roee Shlomo, and Paula Ta-Shma, ``Array CRDTs using delta-mutations'', \textit{Proceedings of the 8th Workshop on Principles and Practice of Consistency for Distributed Data 2021 (PaPoC'21), pp. 1–3}.
+     
+     \item[6.] Lior Zeno, Dan RK Ports, Jacob Nelson, Daehyeok Kim, Shir Landau-Feibish, Idit Keidar, Arik Rinberg, Alon Rashelbach, Igor De-Paula, and Mark Silberstein, ``SwiSh: Distributed Shared State Abstractions for Programmable Switches'', \textit{ 19th USENIX Symposium on Networked Systems Design and Implementation 2022 (NSDI'22), pp. 171–191}.
+     
+     \item[7.] Arik Rinberg, Tomer Solomon, Roee Shlomo, Guy Khazma, Gal Lushi, Idit Keidar, and Paula Ta-Shma, ``DSON: JSON CRDT using delta-mutations for document stores'',\textit{Proceedings of the VLDB Endowment 15.5 2022 (VLDB'22), pp. 1053–1065}.
+ \end{itemize}
+ 
+ \cleardoublepage
+ 
+%   \ifx\iitthesis@publicationInfoEnglish\@empty
+%   \else
+%     \medskip
+%     \noindent \iitthesis@publicationInfoEnglish
+
+%   \fi
+ 
+  
   \ifbool{iitthesis-includeack}{
     %\vspace*{\stretch{1}}
     \medskip
@@ -607,7 +657,7 @@
   }{
     \vspace*{\stretch{1}}
   }
-  \noindent \iitthesis@financialAcknowledgementEnglish
+%   \noindent \iitthesis@financialAcknowledgementEnglish
 }
 
 \newcommand{\makeabstractEnglish}{%

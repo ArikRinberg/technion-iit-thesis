@@ -1,0 +1,35 @@
+\subsection{\texorpdfstring{$\tau$}{t}-Bounded IVL}
+\label{ivl-ssec:bounded-ivl}
+
+IVL itself promises that the returned value is bounded between two linearizations, but sometimes
+a stronger guarantee is needed. For example, a value returned by the shared CM sketch
+described in Section~\ref{ivl-sec:countMin} has no finite bound. Even if the query begins when the sketch
+is initialized, the return value is arbitrary. At times the return value can be bounded.
+
+Hogwild~\inred{CITE} present a framework in which updates lag at most $\tau$ operations behind
+other updates, i.e., an update applies a transformation that is based upon stale data. They show that
+as long as $\tau$ is sufficiently small, their object behaves well.
+
+We borrow their idea for $\tau$-bounded IVL:
+\begin{definition}[$\tau$-Bounded IVL]
+    A history $H$ of an object is $\tau$-Bounded IVL with respect to sequential specification $\mathcal{H}$ and
+    some function $f$ if there exist two linearizations $H_1, H_2$ of $H^?$ such that for every {\sc query} $Q$
+    that returns in $H$,
+    \[\text{ret}(Q, \tau_\mathcal{H}(H_1)) \leq \text{ret}(Q, H) \leq \text{ret}(Q, \tau_\mathcal{H}(H_2)), \]
+    and
+    \[\mid \text{ret}(Q, \tau_\mathcal{H}(H_1)) - \text{ret}(Q, \tau_\mathcal{H}(H_2)) \mid \leq f(\tau). \]
+  
+    Algorithm $A$ is an \emph{IVL implementation} of a sequential specification $\mathcal{H}$ if every
+    history of a well-formed execution of $A$ is $\tau$-Bounded IVL with respect to $(f,\mathcal{H})$.
+    \label{ivl-def:bounded-ivl}
+\end{definition}
+
+In it's essence, Definition~\ref{ivl-def:bounded-ivl} states that the distance from the two return values
+promised by IVL is bounded by some function $f$.
+
+For example, consider the shared CM sketch, where now we add the restraint that any \textsc{query} has at most $\tau$
+concurrent \textsc{update} operations. Whereas before we were able to say that the return value is bounded, we can
+now define the bounds themselves. Consider some query $Q$ on $a$ that returns $v$, and let $S^{start}$ be the
+state of the system at the start of $Q$'s execution. Let $N$ be the length of the stream and $v^{start}$ be the number of
+times $a$ appears in the stream before $S^{start}$. Then:
+\[ v^{start} \leq v \leq v^{start} + \tau + \epsilon (N + \tau).\]

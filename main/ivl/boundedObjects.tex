@@ -1,0 +1,181 @@
+\section{\texorpdfstring{$(\epsilon,\delta)$}{(epsilon,delta)}-bounded objects}
+\label{ivl-sec:bounded-objects}
+
+In this section we show that for a large class of randomized objects,
+IVL concurrent implementations preserve the error bounds of the respective
+sequential ones. More specifically, we focus on randomized
+objects like data sketches, which estimate some quantity (or quantities)
+with probabilistic guarantees.
+Sketches generally support two operations:
+{\sc update}($a$), which processes element $a$, and {\sc query}($arg$),
+which returns the quantity estimated by the sketch as a function of the previously
+processed elements. Sequential sketch algorithms typically have probabilistic error bounds. For example,
+the Quantiles sketch estimates the rank of a given element in
+a stream within $\pm \epsilon n$ of the true rank, with probability
+at least $1-\delta$~\cite{agarwal2013mergeable}, \inred{where $n$ is the number of completed {\sc update} operations
+that precede the query.}
+
+We consider in this section a general class of
+\emph{$(\epsilon, \delta)$-bounded objects} capturing PAC algorithms. A bounded object's
+behavior is defined relative to a deterministic
+sequential specification $\mathcal{I}$, which uniquely defines
+the \emph{ideal} return value for every query in a sequential
+execution. In an $(\epsilon, \delta)$-bounded $\mathcal{I}$ object,
+each query returns the ideal return value within
+an error of at most $\epsilon$ with probability at least $1-\delta$.
+More specifically, it over-estimates (and similarly under-estimates) the
+ideal quantity by at most $\epsilon$ with probability at least $1-\frac{\delta}{2}$. 
+% Meaning if
+% the correct value of a query is $v$, then the $(\epsilon, \delta)$-bounded
+% implementation returns a value $\hat{v}$ such that $\hat{v} \geq v-\epsilon$ with probability
+% at least $1-\delta$ and $\hat{v} \leq v+\epsilon$ with probability
+% at least $1-\delta$. The probability is over the distribution
+% of coin flip vectors observed by specific executions. Note that every
+% sequential skeleton history can be embodied by a sequential history
+% by adding the correct return values with respect to $\mathcal{H}$,
+% regardless of the observed coin flip vector.
+Formally:
+\begin{definition}
+    A sequential randomized algorithm $A$ implements an $(\epsilon,\delta)$-bounded $\mathcal{I}$
+    object if for every query $Q$ returning in
+    an execution of $A$ with any schedule $\sigma$ and a randomly sampled
+    coin flip vector $\vv{c} \in \Omega^\infty$,
+    \[ ret(Q,H(A,\sigma,\vv{c})) \geq ret(Q, \tau_{\mathcal{I}}(H^?(A,\sigma)) - \epsilon \text{ with probability at least } 1-\frac{\delta}{2},\]
+    and 
+    \[ ret(Q,H(A,\sigma,\vv{c})) \leq ret(Q, \tau_{\mathcal{I}}(H^?(A,\sigma)) + \epsilon \text{ with probability at least } 1-\frac{\delta}{2}.\]
+    \label{ivl-def:seq-e,d-obj}
+
+    $A$ induces a sequential specification $\{A(\vv{c})\}_{\vv{c} \in \Omega^\infty}$ of an $(\epsilon,\delta)$-bounded $\mathcal{I}$ object,
+    \inred{by defining the return values of all operations in a given history under a give coin flip vector.}
+\end{definition}
+
+
+We next discuss concurrent implementations of this specification.
+
+
+To this end, we must specify a correctness criterion on the object's
+concurrent executions. As previously stated, the standard notion
+is (strong) linearizability, stipulating that we can ``collapse'' each operation in the concurrent
+schedule to a single point in time. Intuitively, this means that every query returns a value
+that could have been returned by the randomized algorithm at some point during its execution 
+interval. So the query returns an $(\epsilon, \delta)$ approximation of the ideal value at that particular point.
+But this point is arbitrarily chosen, meaning that the query may return an $\epsilon$ approximation
+of any value that the ideal object takes during the query's execution. We therefore look at the minimum and
+maximum values that the ideal object may take during a query's interval, and bound the error relative to these values. 
+
+
+We first define these minimum and maximum values as follows: For a history $H$,
+denote by $\mathcal{L}(H^?)$ the set of linearizations of $H^?$.
+For a query $Q$ that returns in $H$ and an ideal specification $\mathcal{I}$, we define: 
+$$ v^{\mathcal{I}}_{min}(H,Q) \triangleq \min \{ \text{ret}(Q,\tau_\mathcal{I}(L) \mid L \in \mathcal{L}(H^?)\}) ; \\
+v^{\mathcal{I}}_{max}(H,Q) \triangleq \max \{ \text{ret}(Q,\tau_\mathcal{I}(L) \mid L \in \mathcal{L}(H^?))\}.
+$$
+Note that even if $H$ is infinite and has infinitely many linearizations,
+because $Q$ returns in $H$, it appears in each linearization by
+the end of its execution interval, and therefore $Q$ can return a finite number of different
+values in these linearizations, and so the minimum and maximum are well-defined.
+Correctness of concurrent $(\epsilon, \delta)$-bounded objects is then formally defined as follows:
+
+\begin{definition}
+    A concurrent randomized algorithm $A$ implements an $(\epsilon,\delta)$-bounded
+    $\mathcal{I}$ object if for every query $Q$ returning in
+    an execution of $A$ with any schedule $\sigma$ and a randomly sampled
+    coin flip vector $\vv{c} \in \Omega^\infty$,
+    $$ ret(Q,H(A,\sigma,\vv{c})) \geq  v^{\mathcal{I}}_{min}(H(A,\sigma,\vv{c}),Q) - \epsilon \text{ with probability at least } 1-\frac{\delta}{2}, $$
+    and 
+    $$ ret(Q,H(A,\sigma,\vv{c})) \leq v^{\mathcal{I}}_{max}(H(A,\sigma,\vv{c}),Q) + \epsilon \text{ with probability at least } 1-\frac{\delta}{2}.$$
+    \label{ivl-def:con-e,d-obj}
+\end{definition} 
+    
+For simplicity, the definition above uses a common $\epsilon$ for all queries.
+While in some algorithms, $\epsilon$ depends on the stream size, i.e.,
+the number of updates preceding a query, to avoid cumbersome notations we use
+a single variable $\epsilon$, which should be set to the maximum
+value that the sketch's $\epsilon$ bound takes during the query's execution interval.
+Since the query returns, its execution interval is necessarily bounded, and so
+$\epsilon$ is bounded.
+
+The following theorem shows
+that IVL implementations allow us to leverage the
+``legacy'' analysis of a sequential object's error bounds.
+\begin{theorem}
+    If $A$ implements an an $(\epsilon,\delta)$-bounded $\mathcal{I}$ object (Definition~\ref{ivl-def:seq-e,d-obj}),
+    and $A'$ is an IVL implementation of $A$ (Definition~\ref{ivl-def:sivl}), then $A'$ implements
+    a concurrent $(\epsilon,\delta)$-bounded $\mathcal{I}$ object (Definition~\ref{ivl-def:con-e,d-obj}).
+    Consider a sequential specification $\{A(\vv{c})\}_{\vv{c} \in \Omega^\infty}$ of an $(\epsilon,\delta)$-bounded
+    $\mathcal{I}$ object (Definition~\ref{ivl-def:seq-e,d-obj}). Let $A'$ be an IVL implementation of $A$ (Definition~\ref{ivl-def:sivl}). Then $A'$ implements a concurrent
+    $(\epsilon,\delta)$-bounded $\mathcal{I}$ object (Definition~\ref{ivl-def:con-e,d-obj}).
+    \label{ivl-thm:SIVL-bound}
+\end{theorem}
+\begin{proof}
+    % Let $A$ and $A'$ be as defined in the theorem.
+    Consider a skeleton history $H=H^?(A', \sigma)$ of $A'$ with some schedule $\sigma$, and a
+    query $Q$ that returns in $H$. As $A'$ is an IVL implementation of $A$, there exist linearizations
+    $H_1$ and $H_2$ of $H$, such that for every $\vv{c}\in\Omega^\infty$,
+    $\text{ret}(Q, \tau_{A(\vv{c})}(H_1)) \leq \text{ret}(Q, H(A, \sigma, \vv{c})) \leq \text{ret}(Q, \tau_{A(\vv{c})}(H_2))$.
+    %As $\{A(\vv{c})\}_{\vv{c} \in \Omega^\infty}$ captures a sequential $(\epsilon,\delta)$-bounded $\mathcal{I}$ object,
+    As $A$ implements a sequential $(\epsilon,\delta)$-bounded $\mathcal{I}$ object,
+    % $\text{ret}(Q, \tau_{A(\vv{c})}(H_i)$ is bounded as follows:
+    % \[ \text{ret}(Q, \tau_{A(\vv{c})}(H_1)) \geq v_{min}(H(A', \sigma, \vv{c}),Q) - \epsilon \text{ with probability at least } 1-\delta, \]
+    % and
+    % \[ \text{ret}(Q, \tau_{A(\vv{c})}(H_2)) \leq v_{max}(H(A', \sigma, \vv{c}),Q) + \epsilon \text{ with probability at least } 1-\delta. \]
+    $\text{ret}(Q, \tau_{A(\vv{c})}(H_i)$ is bounded as follows:
+    \[ \text{ret}(Q, \tau_{A(\vv{c})}(H_1)) \geq \text{ret}(Q, \tau_{\mathcal{I}}(H_1)) - \epsilon \text{ with probability at least } 1-\frac{\delta}{2}, \]
+    and
+    \[ \text{ret}(Q, \tau_{A(\vv{c})}(H_2)) \leq \text{ret}(Q, \tau_{\mathcal{I}}(H_2)) + \epsilon \text{ with probability at least } 1-\frac{\delta}{2}. \]
+    Furthermore, by definition of $v_{min}$ and $v_{max}$:
+    \[ \text{ret}(Q, \tau_{\mathcal{I}}(H_1)) \geq  v^{\mathcal{I}}_{min}(H(A', \sigma, \vv{c}),Q) ; \\ 
+    \text{ret}(Q, \tau_{A(\vv{c})}(H_2)) \leq v^{\mathcal{I}}_{max}(H(A', \sigma, \vv{c}),Q).\]
+
+    Therefore, with probability at least $1-\frac{\delta}{2}$, $\text{ret}(Q, H(A', \sigma, \vv{c})) \geq v^{\mathcal{I}}_{min}(H(A', \sigma, \vv{c}),Q) - \epsilon$ and
+    with probability at least $1-\frac{\delta}{2}$, $\text{ret}(Q, H(A', \sigma, \vv{c})) \leq v^{\mathcal{I}}_{max}(H(A', \sigma, \vv{c}),Q) + \epsilon$, as needed.
+    % Therefore $A'$
+    % implements a concurrent $(\epsilon,\delta)$-bounded $\mathcal{I}$ object.
+
+    % Let $\{\mathcal{H}(\vv{c})\}_{\vv{c} \in \Omega^\infty}$ be a sequential $(\epsilon,\delta)$-bounded objects specification,
+    % and let $\mathcal{H}$ be the ideal specification. Let $A$ be a strongly linearizable implementation
+    % of $\{\mathcal{H}(\vv{c})\}_{\vv{c} \in \Omega^\infty}$.
+    % Let $\sigma$ be some schedule, consider the concurrent skeleton history $H^?$ arising from
+    % the execution of $A$ under $\sigma$. Consider some query $Q$ that returns in $H^?$.
+
+    % As $A$ is SIVL, there exist linearizations $H_1$ and $H_2$ of $H^?$, such that for every
+    % $\vv{c}\in\Omega^\infty$ $\text{ret}(Q, \tau_{\mathcal{H}(\vv{c})}(H_1)) \leq \text{ret}(Q, H(A, \sigma, \vv{c})) \leq \text{ret}(Q, \tau_{\mathcal{H}(\vv{c})}(H_1))$.
+    % As $\{\mathcal{H}(\vv{c})\}_{\vv{c} \in \Omega^\infty}$ is a sequential $(\epsilon,\delta)$-bounded objects specification,
+    % $\text{ret}(Q, \tau_{\mathcal{H}(\vv{c})}(H_i)$ is bounded as per the definition. By definition
+    % $\text{ret}(Q, \tau_{\mathcal{H}(\vv{c})}(H_1)) \geq v_{min}(H(A, \sigma, \vv{c}),Q)$ and $\text{ret}(Q, \tau_{\mathcal{H}(\vv{c})}(H_2)) \leq v_{min}(H(A, \sigma, \vv{c}),Q)$.
+
+    % Therefore with probability at least $1-\delta$, $\text{ret}(Q, H(A, \sigma, \vv{c})) \geq v_{min}(H(A, \sigma, \vv{c}),Q) - \epsilon$ and
+    % with probability at least $1-\delta$, $\text{ret}(Q, H(A, \sigma, \vv{c})) \geq v_{max}(H(A, \sigma, \vv{c}),Q) + \epsilon$. Therefore $A$
+    % implements a concurrent $(\epsilon,\delta)$-bounded object. 
+\end{proof}
+
+While easy to prove, Theorem~\ref{ivl-thm:SIVL-bound} shows that IVL is in some sense the ``natural''
+correctness property for $(\epsilon,\delta)$-bounded objects; it shows that IVL is a sufficient
+criterion for keeping the error bounded. It is less restrictive -- and as we
+show below, sometimes cheaper to implement -- than linearizability, and yet strong enough
+to preserve the salient properties of sequential executions of $(\epsilon,\delta)$-bounded objects. As
+noted in Section~\ref{ivl-ssec:comparisons}, previously suggested relaxations do not inherently guarantee that
+error bounds are preserved. For example, regular-like semantics, where a query ``sees''
+some subset of the concurrent updates~\cite{stylianopoulos2020delegation},  satisfy IVL (and hence bound
+the error) for monotonic objects albeit not for general ones. Indeed, if object values
+can both increase and decrease, the results returned under such regular-like semantics can arbitrarily diverge from possible sequential ones.
+
+The importance of Theorem~\ref{ivl-thm:SIVL-bound} is that it allows us to leverage
+the vast literature on sequential $(\epsilon, \delta)$-bounded
+objects~\cite{morris1978counting, flajolet1985approximate, cichon2011approximate, liu2016one, CountMin, agarwal2013mergeable}
+in concurrent implementations. We illustrate this in Section~\ref{ivl-ssec:relaxed-cm} below via the
+example of an IVL parallelization of a popular data sketch. By Theorem~\ref{ivl-thm:SIVL-bound},
+it preserves the original sketch's error bounds.
+
+% There exists much literature analyzing sequential $(\epsilon, \delta)$-bounded
+% objects~\cite{morris1978counting, flajolet1985approximate, cichon2011approximate, liu2016one, CountMin, agarwal2013mergeable}.
+% We would like to leverage this literature to analyze the error of the concurrent objects.
+% The concurrent implementation correctness criteria defines how ``easy'' it will be to use
+% existing sequential analysis. Implementing a strongly linearizable objects means the
+% error analysis carries over to the concurrent setting. However, such implementations
+% may be non-trivial~\cite{rinberg2019fast,stylianopoulos2020delegation}; using
+% a strongly linearizable snapshot may be costly  and, as shown in~\cite{ovens2019strongly},
+% these can be costly, both in space and time bounds. Theorem~\ref{ivl-thm:SIVL-bound} proves
+% that we are able to leverage existing analyses on $(\epsilon,\delta)$-bounded object,
+% such as sketches, while still providing flexibility in implementation, as shown
+% in Section~\ref{ivl-sec:countMin}.

@@ -17,6 +17,13 @@
 \documentclass[PhD]{misc/iitthesis}
 
 
+\include{main/fast-concurrent/mypackages}
+\include{main/ivl/mypackages}
+\include{main/sktc/mypackages}
+
+
+\include{main/fast-concurrent/mystyle}
+
 % Definitions of info fields for the thesis - subject, advisor,
 % faculty, acknowledgements, etc. etc. The thesis-fields file 
 % contains Hebrew text, and should use the UTF-8 character set
@@ -85,7 +92,14 @@
 % research direction or questions)
 
 \include{main/prelims}
-\include{main/mainchap1}
+
+\include{main/fast_concurrent}
+
+\include{main/ivl}
+
+\include{main/sktc}
+
+% \include{main/mainchap1}
 \include{main/conclusion}
 %
 % Add any appendices here; they must come _before_ the bibliography

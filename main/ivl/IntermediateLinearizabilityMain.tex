@@ -1,0 +1,215 @@
+%\documentclass[a4paper,UKenglish,cleveref, autoref, thm-restate]{lipics-v2019}
+\documentclass[manuscript,screen,review]{acmart}
+
+%% \BibTeX command to typeset BibTeX logo in the docs
+\AtBeginDocument{%
+  \providecommand\BibTeX{{%
+    \normalfont B\kern-0.5em{\scshape i\kern-0.25em b}\kern-0.8em\TeX}}}
+
+
+%% Rights management information.  This information is sent to you
+%% when you complete the rights form.  These commands have SAMPLE
+%% values in them; it is your responsibility as an author to replace
+%% the commands and values with those provided to you when you
+%% complete the rights form.
+\setcopyright{acmcopyright}
+\copyrightyear{2018}
+\acmYear{2018}
+\acmDOI{10.1145/1122445.1122456}
+
+%% These commands are for a PROCEEDINGS abstract or paper.
+\acmConference[Woodstock '18]{Woodstock '18: ACM Symposium on Neural
+  Gaze Detection}{June 03--05, 2018}{Woodstock, NY}
+\acmBooktitle{Woodstock '18: ACM Symposium on Neural Gaze Detection,
+  June 03--05, 2018, Woodstock, NY}
+\acmPrice{15.00}
+\acmISBN{978-1-4503-XXXX-X/18/06}
+
+
+\input{environment/mypackages.tex}
+\input{environment/mystyle.tex}
+
+\begin{document}
+
+%\nolinenumbers
+
+\title{Intermediate Value Linearizability: A Quantitative Correctness Criterion}
+\titlenote{An extended abstract describing this result
+appears in DISC 2021 with the same authors and title.
+The current version contains some missing proofs that are absent in the extended abstract,
+the definition of IVL now uses posets as opposed to totally ordered sets.
+Furthermore, we discuss other IVL objects (Sections~\ref{ivl-ssec:countMin}, \ref{ivl-ssec:sets-and-iterators}, and \ref{ivl-ssec:priority-q}).
+}
+%with Lightweight Synchronization}
+
+
+%for Data Sketches and More}
+%\titlerunning{Intermediate Value Linearizability} %TODO optional, please use if title is longer than one line
+
+\author{Arik Rinberg}
+\affiliation{%
+  \institution{Technion}
+  \streetaddress{}
+  \city{Haifa}
+  \country{Israel}}
+\email{ArikRinerg@campus.technion.ac.il}
+
+\author{Idit Keidar}
+\affiliation{%
+  \institution{Technion}
+  \streetaddress{}
+  \city{Haifa}
+  \country{Israel}}
+\email{idish@ee.technion.ac.il}
+
+%\author{Arik Rinberg}{Technion, Israel}{ArikRinerg@campus.technion.ac.il}{}{}
+%\author{Idit Keidar}{Technion, Israel}{idish@ee.technion.ac.il}{}{}
+
+\renewcommand{\shortauthors}{A. Rinberg and I. Keidar}
+
+\input{sections/abstract.tex}
+
+
+%\authorrunning{A. Rinberg and I. Keidar} %TODO mandatory. First: Use abbreviated first/middle names. Second (only in severe cases): Use first author plus 'et al.'
+
+%\Copyright{Arik Rinberg and Idit Keidar} %TODO mandatory, please use full first names. LIPIcs license is "CC-BY";  http://creativecommons.org/licenses/by/3.0/
+
+%\acknowledgements{We thank
+%Hagit Attiya and Gadi Taubenfeld for their
+%insightful comments, and the anonymous reviewers
+%for their detailed feedback.}
+
+\begin{CCSXML}
+<ccs2012>
+<concept>
+<concept_id>10010147.10011777</concept_id>
+<concept_desc>Computing methodologies~Concurrent computing methodologies</concept_desc>
+<concept_significance>500</concept_significance>
+</concept>
+<concept>
+<concept_id>10010520.10010521.10010528</concept_id>
+<concept_desc>Computer systems organization~Parallel architectures</concept_desc>
+<concept_significance>500</concept_significance>
+</concept>
+<concept>
+<concept_id>10003752.10010124</concept_id>
+<concept_desc>Theory of computation~Semantics and reasoning</concept_desc>
+<concept_significance>500</concept_significance>
+</concept>
+<concept>
+<concept_id>10003752.10003809.10011778</concept_id>
+<concept_desc>Theory of computation~Concurrent algorithms</concept_desc>
+<concept_significance>500</concept_significance>
+</concept>
+<concept>
+<concept_id>10003752.10003809.10010055</concept_id>
+<concept_desc>Theory of computation~Streaming, sublinear and near linear time algorithms</concept_desc>
+<concept_significance>300</concept_significance>
+</concept>
+</ccs2012>
+\end{CCSXML}
+  
+\ccsdesc[500]{Computing methodologies~Concurrent computing methodologies}
+\ccsdesc[500]{Computer systems organization~Parallel architectures}
+\ccsdesc[500]{Theory of computation~Semantics and reasoning}
+\ccsdesc[500]{Theory of computation~Concurrent algorithms}
+\ccsdesc[300]{Theory of computation~Streaming, sublinear and near linear time algorithms}
+
+% \begin{CCSXML}
+%     <ccs2012>
+%      <concept>
+%       <concept_id>10010520.10010553.10010562</concept_id>
+%       <concept_desc>Computer systems organization~Embedded systems</concept_desc>
+%       <concept_significance>500</concept_significance>
+%      </concept>
+%      <concept>
+%       <concept_id>10010520.10010575.10010755</concept_id>
+%       <concept_desc>Computer systems organization~Redundancy</concept_desc>
+%       <concept_significance>300</concept_significance>
+%      </concept>
+%      <concept>
+%       <concept_id>10010520.10010553.10010554</concept_id>
+%       <concept_desc>Computer systems organization~Robotics</concept_desc>
+%       <concept_significance>100</concept_significance>
+%      </concept>
+%      <concept>
+%       <concept_id>10003033.10003083.10003095</concept_id>
+%       <concept_desc>Networks~Network reliability</concept_desc>
+%       <concept_significance>100</concept_significance>
+%      </concept>
+%     </ccs2012>
+% \end{CCSXML}
+    
+% \ccsdesc[500]{Computer systems organization~Embedded systems}
+% \ccsdesc[300]{Computer systems organization~Redundancy}
+% \ccsdesc{Computer systems organization~Robotics}
+% \ccsdesc[100]{Networks~Network reliability}
+
+% \ccsdesc[500]{Theory of computation~Semantics and reasoning}
+% \ccsdesc[500]{Computer systems organization~Parallel architectures}
+% \ccsdesc[500]{Computing methodologies~Concurrent computing methodologies} %TODO mandatory: Please choose ACM 2012 classifications from https://dl.acm.org/ccs/ccs_flat.cfm
+
+
+
+\keywords{concurrency, concurrent objects, linearizability} %TODO mandatory; please add comma-separated list of keywords
+
+%\relatedversion{A full version of the paper is available at \cite{rinberg2020intermediate}, \url{https://arxiv.org/abs/2006.12889}.}
+
+
+
+\maketitle
+
+
+\input{sections/intro.tex}
+
+\input{sections/preliminaries.tex}
+
+\input{sections/intermediateLinearizability.tex}
+
+\input{sections/boundedObjects.tex}
+
+\input{sections/examples.tex}
+
+%\input{sections/countMin.tex}
+
+%\input{sections/adderObject.tex}
+
+\input{sections/lowerBound.tex}
+
+%\input{sections/extensions.tex}
+
+%\input{sections/otherObjects.tex}
+
+\input{sections/conclusion.tex}
+
+%\input{sections/boundedIVL}
+
+%\input{sections/parameterServer.tex}
+
+%%
+%% The acknowledgments section is defined using the "acks" environment
+%% (and NOT an unnumbered section). This ensures the proper
+%% identification of the section in the article metadata, and the
+%% consistent spelling of the heading.
+%\begin{acks}
+%To Robert, for the bagels and explaining CMYK and color spaces.
+%\end{acks}
+
+%%
+%% The next two lines define the bibliography style to be used, and
+%% the bibliography file.
+%\bibliographystyle{ACM-Reference-Format}
+\bibliographystyle{ACM-Reference-Format}% the mandatory bibstyle`
+\bibliography{bibliography}
+
+%\newpage
+
+%\appendix
+
+%\input{sections/appendix.tex}
+
+
+\end{document}
+\endinput
+%%
+%% End of file `sample-sigconf.tex'.

@@ -1,0 +1,188 @@
+The system measures a stream of data that is split in a distributed fashion across several ingestion nodes. 
+Upon stream ingestion completion, the nodes communicate with a centralized server which can then answer queries. This is depicted in Figure~\ref{sktc-fig:ingestion-nodes}. 
+Queries are agnostic to the specific architecture, namely, they only refer to the complete stream as a whole and do not refer to its parts observed by each of the nodes. 
+%Assume that the channel between the nodes to the centralized server has limited bandwidth. 
+There is a clear tradeoff between the summaries size sent to the server and its ability to answer queries accurately.  
+Accordingly, we would like to optimally use compression to allow high accuracy.  The \textbf{MM}~\cite{yang2018elastic} scheme was proposed to reduce summary size through compression of CMs maintained by the nodes but the fact it can be compressed in only particular ratios restricts it from taking advantage of all bandwidth to the server. 
+%In a similar fashion to \cite{yang2018elastic}, we would like to efficiently utilize the available bandwidth for a given accuracy. Therefore, we present a trade-off between the accuracy required and the overall amount of data sent over the network. Specifically, we aim to reduce the overall amount of data sent over the network for given accuracy bounds. To this end, we aim to use sketch compression to reduce the amount of data sent but maintain a sufficiently low error bound. 
+%In \cite{yang2018elastic}, the authors build a CM $\textsl{S}$ for counting mouse flows occurrences, and before data transfer to the centralized server, their method compressed the CM by joining multiple cell values into one cell. A clear drawback of the Zip-sketch is that it can only compress the original sketch to a limited set of compression sizes, which are the dividers of the original Count-Min sketch size.
+
+%We assume streams are ingested in a distributed fashion across several ingestion nodes. Upon stream ingestion completion, the nodes communicate with a centralized server, which can then answer queries. This is depicted in Figure~\ref{sktc-fig:ingestion-nodes}. In a similar fashion to \cite{yang2018elastic}, we would like to efficiently utilize the available bandwidth for a given accuracy. The queries are agnostic to the specific architecture, they do not know how many ingestion nodes were used if at all, all they require is a promise on the accuracy of the query result. Therefore, we present a trade-off between the accuracy required and the overall amount of data sent over the network. Specifically, we aim to reduce the overall amount of data sent over the network for given accuracy bounds. To this end, we aim to use sketch compression to reduce the amount of data sent but maintain a sufficiently low error bound. In \cite{yang2018elastic}, the authors build a CM $\textsl{S}$ for counting mouse flows occurrences, and before data transfer to the centralized server, their method compressed the CM by joining multiple cell values into one cell. A clear drawback of the Zip-sketch is that it can only compress the original sketch to a limited set of compression sizes, which are the dividers of the original Count-Min sketch size.
+
+In network traffic, flow size distribution among switches can be imbalanced~\cite{Niagara, Sadeh19}.  For instance, the location of nodes along paths of various lengths or employment of particular network functions in the nodes can result in nodes receiving a small portion of the network stream while others more traffic.
+We leverage this skew to reduce the summaries size sent to the server. Specifically, we aim to compress the sketches sent by ingestion nodes that received a small portion of the overall stream more than those sketches of nodes with higher portions of traffic. We say that a sketch   compression from $w$ columns to $w'$ columns has a \emph{compression ratio} of $w'/w$. 
+As mentioned, the number of rows is not reduced. 
+
+
+
+The design of Traffic-Aware Count-Min Sketch (TA-CM) is as follows: Given parameters $(\epsilon,\delta)$, where $\epsilon$ is the desired error, $\delta$ is the maximum error probability, we instantiate a CM on every ingestion node with parameters $(\sigma \cdot \epsilon, \delta)$ for some $0 < \sigma \leq 1$. $\frac{1}{\sigma}$ is an enlargement factor and is known in advance to the ingestion nodes and the centralized server. We increase the size of the sketch at the ingestion nodes by $\frac{1}{\sigma}$ and as such decrease their respective error (as the error is tied to the number of columns). By enlarging the sketches at the ingestion nodes, we can compress them while maintaining an error within the desired bounds. When the ingestion period ends, the following protocol takes place:
+%\begin{enumerate}
+
+\emph{(i)} Each ingestion node reports to the central node its local stream size.
+
+\emph{(ii)} The centralized server computes each ingestion node's compression ratio.
+
+\emph{(iii)} Every ingestion node compresses its CM with the CM-SKTC method, then sends its summary to the centralized server.
+
+\emph{(iv)} The centralized node can query a single flow $f_j$ by querying every CM-SKTC separately and summing up the results to calculate the estimation for flow $f_j$.
+%\end{enumerate}
+
+To achieve an overall maximum error of $\epsilon$ for an arbitrary flow size estimation, the centralized server can (naively) request a compression ratio of $1 / \sigma$. Theorem \ref{sktc-thm:two-sketches} shows that when there are two ingestion nodes, there are optimal compression ratios that minimize the total summaries size while maintaining the error bounds of the flow size estimation in the centralized server to be at most $\epsilon$.
+
+Intuitively, the proof is based on constraints that: (i) the overall error be within the desired bounds, and (ii) the size of sent traffic be smaller than the naive solution (i.e., less than $2\cdot w \cdot d$ where $w \cdot d$ is the size of a CM with parameters $(\epsilon, \delta)$).
+
+\begin{theorem}
+For given Count-Min sketch parameters $\epsilon, \delta$,  initial resize factor $\sigma$, and two CMs $\textsl{S}_1$, $\textsl{S}_2$, with stream sizes of $N_1$, $N_2$ respectively, such that w.l.o.g $N_1 \geq N_2$. The TA-CM resize factors $r_1=\frac{k + 1}{\sigma  (k + \sqrt{k})}$ and $r_2=\frac{k+1}{\sigma(\sqrt{k}+1)}$ for $k = N_1 / N_2$ generate the minimal amount of network communication such that the error is bounded by $\epsilon$ \inblue{ with probability at least $1-(\beta + \delta (1-\beta))$}.
+\label{sktc-thm:two-sketches}
+\end{theorem}
+
+\begin{proof}[\textbf{Proof of Theorem \ref{sktc-thm:two-sketches}}]
+Denote by $f$ the flow whose size is being estimated and by $\hat{f}$ the estimation. Given a CM with parameters $(\sigma \epsilon, \delta)$, after compression by a factor of $r$, the following inequality holds \inblue{with probability at least $1-(\beta + \delta (1-\beta))$}, by Lemma~\ref{sktc-lmma:single-array-compression}:
+$ f \leq \hat{f} \leq f + \sigma \epsilon r N$
+\noindent Denote $f_1$, $f_2$ the flow ingested by $\textsl{S}_1$, $\textsl{ S}_2$ respectively, and, likewise, their estimations (after compression) by $\hat{f_1}$, $\hat{f_2}$.
+
+\inblue{
+Recall that:
+$f_1 \leq \hat{f}_1 \leq f_1 + \sigma \epsilon r_1 N_1$,
+and 
+$f_1 \leq \hat{f}_2 \leq f_2 + \sigma \epsilon r_2 N_2$,
+where
+$f = f_1 + f_2$.
+}
+Therefore, \inblue{due to the mergeability property}, the estimation by the central entity is:
+\begin{align*}
+    f \leq \hat{f_1} + \hat{f_2} \leq f + \sigma \epsilon (r_1 N_1 + r_2 N_2) \\
+    f_1 + f_2 \leq \hat{f_1} + \hat{f_2} \leq f_1 + \sigma \epsilon r_1 N_1 + f_2 + \sigma \epsilon r_2 N_2
+\end{align*}
+\noindent Recall that we would like to maintain an overall error of $\epsilon$, therefore we require that:
+\begin{align*}
+    \sigma(r_1 N_1 + r_2 N_2) \leq N,
+\end{align*}
+\noindent and that $N_1 = k N_2$. Denote the ratio between $r_1$ and $r_2$ as $\alpha=r_1 / r_2$. As $N_1$ is larger than $N_2$, we expect $\alpha$ to be less than $1$, as the information retained in $\textsl{S}_2$ will have less of an impact than $\textsl{S}_1$:
+\begin{align*}
+   & N_1 + N_2 = N \Rightarrow  N_2 = \frac{N}{k+1} \\
+    &\sigma(r_1 N_1 + r_2 N_2) = \sigma (\alpha k r_2 N_2 + r_2 N_2) \leq N \\
+    &r_2 \leq \frac{k+1}{\sigma (\alpha k +1)}
+\end{align*}
+
+To reduce the total summaries size as much as possible, the ratios $r_1$ and $r_2$ should be as large as possible:
+\begin{align}
+    r_2 = \frac{k+1}{\sigma (\alpha k +1)}
+    \label{sktc-eq:c2-size}
+\end{align}
+
+ The goal is to reduce the total summaries size in comparison to trivial resizing by a factor of $1/\sigma$. %Let $wd$ be the size of the CM prior to resizing, therefore 
+ We require:
+\begin{align}
+%    &\frac{wd}{r_1} + \frac{wd}{r_2} \leq \frac{wd}{1 / \sigma} + \frac{wd}{1 / \sigma} \nonumber \\
+    &\frac{1}{r_1} + \frac{1}{r_2} \leq 2 \cdot \frac{1}{1 / \sigma} = 2\sigma \label{sktc-eq:size-constracint}
+\end{align}
+
+\noindent To achieve minimum summaries size, we minimize the left-hand size of  Equation~(\ref{sktc-eq:size-constracint}). \inblue{Recall that $r_1 = \alpha r_2$ for some $\alpha \in (0, \infty)$.}
+\begin{align*}
+    &\min_{\alpha \in (0, \infty)} \left\{ \frac{1}{r_1} + \frac{1}{r_2} \right\} = \min_{\alpha \in (0, \infty)} \left\{ \frac{1}{\alpha r_2} + \frac{1}{r_2} \right\} = \\
+%    &\min_{\alpha \in (0, \infty)} \left\{ \frac{\sigma (\alpha k +1)}{\alpha(k+1)} + \frac{\sigma (\alpha k +1)}{k+1} \right\} = \\
+    &\min_{\alpha \in (0, \infty)} \left\{ \frac{1 + \alpha}{\alpha r_2}\right\} \stackrel{(i)}{=} \min_{\alpha \in (0, \infty)} \left\{ \sigma (\alpha k +1) \frac{1+ \alpha}{\alpha(k+1)} \right\} \stackrel{(ii)}{=} \\
+    &\min_{\alpha \in (0, \infty)} \left\{ \alpha k + \frac{1}{\alpha} \right\}
+\end{align*}
+\noindent Where (i) is from Equation~(\ref{sktc-eq:c2-size}) and (ii) is by removing constants not affected by $\alpha$. The minimum is for $\alpha = 1 / \sqrt{k}$, implying $\alpha < 1$ for  $k > 1$, as expected. Finally, our last constraint is that merging the sketches by factors other than $1/\sigma$ should provide smaller summaries size:
+\begin{align*}
+    &\frac{1}{r_1} + \frac{1}{r_2} = \sigma (\alpha k + 1 ) \frac{1+\alpha}{\alpha (k+1)} \stackrel{\alpha = 1 / \sqrt{k}}{=} \sigma \frac{(\sqrt{k} + 1)^2}{k+1}.
+    %\\
+%    &\sigma \frac{(\sqrt{k} + 1)^2}{k+1} \stackrel{\text{easy to see}}{\leq} 2 \sigma \Rightarrow k \geq 1
+\end{align*}
+%\begin{align*}
+%    &\frac{1}{r_1} + \frac{1}{r_2} = \sigma (\alpha k + 1 ) \frac{1+\alpha}{\alpha (k+1)} \stackrel{\alpha = 1 / \sqrt{k}}{=} \\
+%    &\sigma \frac{(\sqrt{k} + 1)^2}{k+1} \stackrel{\text{easy to see}}{\leq} 2 \sigma \Rightarrow k \geq 1
+%\end{align*}
+\end{proof}
+
+\inblue{The theorem shows that, as the imbalance in ingested stream parts between the nodes ($k$) increases, sketch $\textsl{S}_2$ is compressed to a higher degree. Furthermore, at the extreme case (i.e., $k = \infty$), $\textsl{S}_1$ is compressed by a factor of $1/ \sigma$, whereas $\textsl{S}_2$ is compressed by a factor of $\infty$. At this extremity, $\textsl{S}_2$ contains no information, thus this compression is intuitive. Furthermore, when $k=1$ both sketches are compressed by a ratio of $1 / \sigma$, which is also intuitive.
+}
+
+%As $k$ increases, the resize factor of $\textsl{S}_2$ increases. This is expected, as it has less of an impact on the answer to the query. Note that the summaries size with the optimal resize factors tends to half that of the summaries size sent in the trivial case, therefore utilizing optimal resizing upon uneven stream distribution leads to better usage of network bandwidth.
+
+
+%So far we showed that in the case of two ingestion nodes we can resize the data in a way that maintains the error bounds within certain limits and decrease the traffic from ingestion nodes to the centralized server. However, in real networks, many ingestion nodes measure the traffic across the network. In the following Theorem, we expand the result of Theorem \ref{sktc-thm:two-sketches} to the general case of $n$ ingestion nodes.
+
+We now generalize Theorem~\ref{sktc-thm:two-sketches} to the practical case of an arbitrary number of $n$ nodes.
+We again maintain error bounds within certain limits.
+\inblue{We first prove a helpful lemma:}
+%\dor{We need to fit this Lemma into the text}
+\begin{lemma}
+For $n \geq 2$ the variables $1 \leq y_1,..,y_n$ satisfy 
+\[\textstyle \frac{\left(1+\sum\limits_{i=1}^n \prod\limits_{j=i}^n \sqrt{y_j}\right)^2}{
+\left(1+\sum\limits_{i=1}^n \prod\limits_{j=i}^n y_j\right)}
+\leq n+1.\]
+%\[\textstyle \dfrac{\left(1+\sum\limits_{i=1}^n \prod\limits_{j=i}^n \sqrt{x_j}\right)^2}{ 
+%1+\sum\limits_{i=1}^n \prod\limits_{j=i}^n x_j}
+%\leq n+1.\]
+\label{sktc-lemma:sqrt-sums-lemma}
+\end{lemma}
+\begin{proof}[\textbf{Proof of Lemma \ref{sktc-lemma:sqrt-sums-lemma}}]
+Let $y_1,\dots,y_n$ be as required.
+\inblue{Denote:
+\[x_i \triangleq \prod\limits_{j=i}^n y_j.\]
+Note that, as $1 \leq y_1 \dots y_n$, then $1 \leq x_i$ for all $i$.}
+
+As \[\left(1+\sum\limits_{i=1}^n \sqrt{x_i}\right)^2 = 1+\sum\limits_{i=1}^n x_i+\sum\limits_{i=1}^n 2\sqrt{x_i} + \sum\limits_{i\neq j} \sqrt{x_ix_j},\]
+then
+\[\frac{\left(1+\sum\limits_{i=1}^n \sqrt{x_i}\right)^2}{1+\sum\limits_{i=1}^n x_i} = 1+ \frac{\sum\limits_{i=1}^n 2\sqrt{x_i} + \sum\limits_{i\neq j} \sqrt{x_ix_j}}{1+\sum\limits_{i=1}^n x_i}\]
+so we need to prove that
+\[\frac{\sum\limits_{i=1}^n 2\sqrt{x_i} + \sum\limits_{i\neq j} \sqrt{x_ix_j}}{1+\sum\limits_{i=1}^n x_i} \leq n\]
+
+\inblue{
+Using the arithmetic-mean--geometric-mean inequality:
+\[\sum\limits_{i\neq j} \sqrt{x_ix_j} \leq \sum\limits_{i\neq j} \frac{x_i + x_j}{2}=\sum\limits_{i=1}^n (n-1)x_i.\]
+The divisor disappears as we double count every $x_i$: once on the left hand of the $+$ and once on the right hand.
+Furthermore, for any $x_i \geq 1$:
+\[2 \sqrt{x_i}+(n-1)x_i \leq 1 + n\cdot x_i.\]
+Putting these together we get:
+\[\sum\limits_{i=1}^n 2\sqrt{x_i} + \sum\limits_{i\neq j} \sqrt{x_ix_j} \leq \sum\limits_{i=1}^n 2\sqrt{x_i} + \sum\limits_{i=1}^n (n-1)x_i =\]
+\[\sum\limits_{i=1}^n \left(2 \sqrt{x_i}+\left(n-1\right)x_i \right)\leq \sum\limits_{i=1}^n \left( 1 + n\cdot x_i\right)= n +n\sum\limits_{i=1}^n x_i \]
+Finally:
+\[\frac{\sum\limits_{i=1}^n 2\sqrt{x_i} + \sum\limits_{i\neq j} \sqrt{x_ix_j}}{1+\sum\limits_{i=1}^n x_i} \leq \frac{n +n\sum\limits_{i=1}^n x_i}{1 +\sum\limits_{i=1}^n x_i}=n\]
+}
+\end{proof}
+
+We now use the lemma to prove the following theorem:
+\begin{theorem}
+Given $n \geq 2$ CMs $\textsl{S}_i$, with stream sizes $N_1 \ge N_2 \ldots \ge N_n$. Denote $k_i=N_i/N_{i+1}$ for $i \in [1,n-1]$ and $k_n = 1$.
+%of $N_i$ for $i\in [1,n]$. Let $k_i=N_i/N_{i+1}$ and $k_n = 1$. If w.l.o.g $\forall i \in [1,n-1]: k_i \geq 1$
+The optimal TA-CM resize factors are \[
+\forall i \in [1,n-1]: \ r_i = \frac{\inblue{r_{i+1}}}{\sqrt{k_i}}
+\quad  \text{and} \quad  
+r_n = \frac{\sum\limits_{i=1}^n \prod\limits_{j=i}^n k_j}{\sigma(\sum\limits_{i=1}^n {\prod\limits_{j=i}^n \sqrt{k_j})}}.\]
+\label{sktc-thm:n-sketches}
+\end{theorem}
+
+\begin{proof}[\textbf{Proof of Theorem \ref{sktc-thm:n-sketches}}]
+The proof follows a similar path as the proof for Theorem~\ref{sktc-thm:two-sketches}. Denote by $f_i$ the size of the stream $i$ observed by $\textsl{S}_i$, and the estimations by $\hat{f_i}$. Denote by $r_i$ the compression ratio of $\textsl{S}_i$. \inblue{Let $\delta'$ be the probability calculated for some compression rate $r$, to be determined}. \inblue{Using the mergeability property, the estimation by the central entity, with probability at least $1-\delta'$}, is:
+\[ f \leq \sum_i \hat{f_i} \leq f + \sigma \epsilon \sum_i r_i N_i \]
+\[ \sum_i f_i \leq \sum_i \hat{f_i} \leq \sum_i \left(f_i + \sigma \epsilon r_i N_i\right) \]
+Recall that we wish to maintain an overall bound of $\epsilon$, thus:
+\[\sigma \epsilon \sum_i r_i N_i \leq \epsilon N\]
+
+Denote $k_i = \frac{N_i}{N_{i+1}}$, and $\alpha_i=\frac{r_i}{r_{i+1}}$. Therefore:
+\[\sigma \epsilon r_n N_n \sum\limits_{i=1}^{n} \prod\limits_{j=i}^n \alpha_j k_j  \leq \epsilon N \]
+Since $N = N_1+N_2+...+N_n$ and $N_i = N_n \cdot \prod\limits_{j=i}^n k_j $, similar to the proof for Theorem~\ref{sktc-thm:two-sketches}, observe that
+%\[ c_n \leq \frac{\sum\limits_{i=1}^{n} \prod\limits_{j=i}^n k_j}{\sigma\left(\sum\limits_{i=1}^{n} \prod\limits_{j=i}^n \alpha_j k_j\right)}\]
+\[ r_n \leq \left(\sum\limits_{i=1}^{n} \prod\limits_{j=i}^n k_j\right) / \left(\sigma \cdot \sum\limits_{i=1}^{n} \prod\limits_{j=i}^n \alpha_j k_j\right).\]
+We maximize $r_n$ to minimize summaries size. We choose minimal such $\alpha_i$ values by finding the minimum of 
+%\[\min_{\alpha_i} \left\{\sum_{i=1}^n \frac{1}{c_i} \right\}\]
+$\min_{\alpha_i} \left\{\sum_{i=1}^n \frac{1}{r_i} \right\}$. 
+
+
+Following the proof for Theorem~\ref{sktc-thm:two-sketches} we use $\alpha_i = \frac{1}{\sqrt{k_i}}$ brings the summaries size to less than the trivial compression~\footnote{We also conjecture that it is a local minima.}.
+Therefore, we reduce the size if the following holds:
+\[  \left(1+\sum\limits_{i=1}^{n-1} \prod\limits_{j=i}^{n-1}\sqrt{k_j}\right)^2 / \left(1+\sum\limits_{i=1}^{n-1} \prod\limits_{j=i}^{n-1}k_j\right) \leq (n-1)+1\]
+%\[  \frac{\left(1+\sum\limits_{i=1}^{n-1} \prod\limits_{j=i}^{n-1}\sqrt{k_j}\right)^2}{1+\sum\limits_{i=1}^{n-1} \prod\limits_{j=i}^{n-1}k_j} \leq n\]
+By Lemma \ref{sktc-lemma:sqrt-sums-lemma} this expression is true for all ratios $k_i \geq 1$
+and the resize factors are given by:
+%\[ c_n = \frac{\sum\limits_{i=1}^n \prod\limits_{j=i}^n k_j}{\sigma(\sum\limits_{i=1}^n {\prod\limits_{j=i}^n \sqrt{k_j})}}\]
+\[ r_n = \left(\sum\limits_{i=1}^n \prod\limits_{j=i}^n k_j\right) / \left(\sigma \cdot \sum\limits_{i=1}^n {\prod\limits_{j=i}^n \sqrt{k_j}}\right),\]
+implying $r_i = \frac{r_{i+1}}{\sqrt{k_i}}$. Finally, using $r_n$ to calculate $\delta'$ (i.e., taking the lowest probability), we have proven our theorem.
+\end{proof}
+
+\inblue{
+Theorem~\ref{sktc-thm:n-sketches} shows that sketches that have ingested a larger portion of the overall traffic are compressed less. This is similar to the case of $2$ nodes, as nodes that have ingested less traffic have a smaller impact on the query. Note that if all nodes ingest an equal part of the stream, i.e., $k_i=1$ for all $i$, then the compression ratio is $1/\sigma$ as expected.}

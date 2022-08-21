@@ -1,0 +1,42 @@
+\subsection{\texorpdfstring{$r$}{r}-Bounded IVL-Relaxed IVL}
+\label{ivl-ssec:relaxed-cm}
+
+Using the $r$-relaxed IVL form, we can create a buffered CM sketch
+by using a similar framework to Rinberg et al.~\cite{rinberg2019fast}. The
+\textsc{update} operations are buffered locally until a certain threshold
+is reached. The resulting matrix is then propagated to the shared CM sketch,
+which is updated element by element. 
+
+This buffered approach allows for far better use of local memory. Rather than every
+\textsc{update} operating on shared memory, most operations are on local memory. This
+leads to better cache utilization, and forgoes expensive NUMA memory accesses.
+
+Another difference is the \textsc{query} operation. In Rinberg et al. a \textsc{query}
+takes a strongly linearizable snapshot of the current global state, and applies the query
+to it.  In a CM sketch, a linearizable snapshot is an expensive operation -- an adversarial
+scheduler could theoretically block the operation from ever returning. Using an IVL query
+forgoes the need for a strongly linearizable snapshot, while retaining error bounds.
+
+Finally, defining the correctness of such an object requires defining $r$-relaxed IVL.
+Borrowing the definition of the $r$-relaxed specification from some sequential specification
+$\mathcal{H}$ from~\cite{rinberg2019fast}:
+\begin{definition}[r-relaxation]
+    A sequential history $H$ is an \emph{$r$-relaxation} of a sequential history $H'$,
+    if $H$ is comprised of all but at most $r$ of the invocations in $H'$ and their responses,
+    and each invocation in $H$ is preceded by all but at most $r$ of the invocations that precede the 
+    same invocation in $H'$. The \emph{$r$-relaxation} of $\mathcal{H}$ is the set of histories
+    that have r-relaxations in $\mathcal{H}$:
+    
+    $\mathcal{H}^r \triangleq $ $\{H'|\exists H\in$$\mathcal{H}$ s.t. $H$ is an $r$-relaxation of $H'\}$.
+    \label{ivl-def:r-relaxtion}
+\end{definition}
+We can plug Definition~\ref{ivl-def:r-relaxtion} into Definition~\ref{ivl-def:sivl} instead of the sequential specification
+there to get a specification for $r$-relaxed IVL objects. Let $\mathcal{H}_{CM}$ be the sequential specification of
+the CM sketch. We can now say the the buffered IVL CM sketch is $r$-relaxed IVL with respect to $\mathcal{H}_{CM}$, where
+$r=2Nb$, where $N$ is the number of \inred{processes} and $b$ is the local buffer size (i.e., the number of updates processed
+between propagations).
+
+The error analysis follows from the relaxation and the definition of IVL. Consider some query $Q$ on $a$
+that returns $v$, and let $S^{start}$ and $S^{end}$ be the state of the system at the start and end of
+$Q$'s execution, respectively. Let $N$ be the length of the stream and $v^{start}$ be the number of times $a$ appears in the stream before $S^{start}$.
+\[ v^{start} - r \leq v \leq  v^{end} + \epsilon N^{end}. \]

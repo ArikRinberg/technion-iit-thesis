@@ -1,0 +1,52 @@
+% \newtheorem{observation}{Observation}
+%\newtheorem{claim}{Claim}
+\newtheorem{notation}{Notation}
+\newtheorem{invariant}{Invariant}
+%\newtheorem{definition}{Definition}
+\newtheorem{assertion}{Assertion}
+\newtheorem{thm}{Theorem}
+%\newtheorem{lemma}{Lemma}
+\newtheorem{crly}{Corollary}
+
+\newcommand{\inred}[1]{{\color{red}{#1}}}
+\newcommand{\inblue}[1]{{\color{blue}{#1}}}
+\newcommand{\ingray}[1]{{\color{gray}{#1}}}
+\newcommand{\remove}[1]{}
+\newcommand\Set[2]{\{\,#1 \mid #2\,\}}
+\newcommand\Collection[1]{\{\,#1\,\}}
+\newcommand{\abs}[1]{\lvert#1\rvert}
+\newcommand{\floor}[1]{{\left\lfloor {#1} \right\rfloor}}
+\newcommand{\Int}{\int\limits}
+\DeclareMathOperator*{\argmax}{arg\,max}
+
+\declaretheorem[name=Theorem]{rthm}
+\declaretheorem[name=Claim]{clm}
+\declaretheorem[name=Corollary]{crly2}
+
+
+\newcommand{\CM}[4]{
+    \begin{tikzpicture}[baseline=3ex]
+        \draw[step=0.5cm,color=gray] (0,0) grid (1,1);
+        \node at (0.25,0.25) {#3};
+        \node at (0.25,0.75) {#1};
+        \node at (0.75,0.75) {#2};
+        \node at (0.75,0.25) {#4};
+    \end{tikzpicture}
+}
+
+%\def \CM(#1, #2, #3 ,#4) {
+%    \begin{tikzpicture}[baseline=3ex]
+%        \draw[step=0.5cm,color=gray] (0,0) grid (1,1);
+%        \node at (0.25,0.25) {#3};
+%        \node at (0.25,0.75) {#1};
+%        \node at (0.75,0.75) {#2};
+%        \node at (0.75,0.25) {#4};
+%    \end{tikzpicture}
+%}
+
+\algblock{Vars}{EndFor}
+\algrenewtext{Vars}{variables}
+\algrenewtext{EndVars}{}
+\algblock{ForEach}{EndFor}
+\algrenewtext{ForEach}{for each }
+

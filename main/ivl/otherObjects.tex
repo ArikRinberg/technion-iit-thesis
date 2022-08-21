@@ -1,0 +1,47 @@
+\subsection{IVL and SC}
+\label{ivl-sec:other-objects}
+
+While we focused on quantitative objects, the idea behind IVL can be
+expanded to include other types of objects as well. For example, iterators
+in \emph{key-value stores (KVS)} typically return a non-atomic scan \inred{CITE OAK (and others)}.
+The semantics of such scan operations can be defined using IVL. Consider a KVS supporting
+three operations, (1) \textsc{insert}, (2) \textsc{delete}, and (3) \textsc{scan}.
+The sequential specification $\mathcal{H}_{KVS}$ is straightforward, a \textsc{scan}
+returns all key-value pairs that were inserted before it, that have not since been deleted.
+
+The concurrent semantics would therefore be as follows: a \textsc{scan} returns at least
+all key-value pairs that were inserted before it, that are not concurrently being deleted.
+In other words, if $KV$ is the set of pairs that we inserted before some scan that returns $S$, and $D$ is the
+set of keys that are being concurrently removed, then $KV \setminus D \subseteq S$.
+
+We would also like to capture the semantics of other types of objects that return values from
+partially ordered sets. For example, the \textsc{pop} of a priority queue \inred{CITE} returns
+element-priority pairs. Consider a concurrent priority queue with $3$ threads, $t_0,t_1,t_2$.
+$t_0$ inserts the pair $(e_1,5)$, followed by $t_1$ inserting $(e_2,3)$, followed by $t_0$
+inserting $(e_3,4)$. Concurrently to the inserts, $t_2$ issues a \textsc{pop}. Under linearizability
+the pop can return either $(e_1,5)$ or $(e_2,3)$. However, from the perspective of $t_0$ there
+is a preference for $(e_3,4)$. 
+
+In fact, we can generalize to all operations that return a value from partially ordered sets:
+\begin{definition}[Poset IVL (P-IVL)]
+    A history $H$ of an object is IVL with respect to sequential specification $\mathcal{H}$ if there
+    exist two linearizations $H_1, H_2$ of $H^?$ such that for every operation $o$ that returns a
+    value from some partially ordered set $(S, \leq)$ in $H$,
+    \[\text{ret}(o, \tau_\mathcal{H}(H_1)) \leq \text{ret}(o, H) \leq \text{ret}(o, \tau_\mathcal{H}(H_2)). \]
+    \label{ivl-def:poset-ivl}
+\end{definition}
+
+We observe that sequential consistency \inred{CITE?} and P-IVL are incomparable,
+as depicted in Figure \inred{XXX}. Sometimes we require both for the return
+values to ``make sense''. For example, a pure P-IVL priority queue requires
+that a \textsc{pop} return an element who's priority is bounded between
+two linearizable ones, but says nothing about the element being one added
+to the queue via a \textsc{push}. E.g., if one linearization would return
+an element $(e_1,2)$ and another linearization would return an element $(e_2,5)$, then
+according to P-IVL, also returning $(e_3,3)$ is legal. But $(e_3,3)$ may be an element
+which was never added to the queue.
+
+For the proper semantics we would require that a priority queue be both
+P-IVL and sequentially consistent. The former bounds the priority of the returned
+elements, and the latter requires the elements to be ones added to the queue.
+These criteria compliment one another.
